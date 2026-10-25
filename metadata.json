@@ -1,0 +1,6 @@
+{
+  "name": "ChronosBox",
+  "description": "Durable asynchronous agent execution engine, isolated cloud sandbox runner with transactional rollback, deterministic SHA-256 trajectory circuit breaker, and Kaggle GPU kernel reconciler.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
