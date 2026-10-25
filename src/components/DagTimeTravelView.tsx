@@ -3,12 +3,12 @@ import {
   DurableRun,
   RunStatus,
   StateCheckpoint,
+  KaggleKernelSummary,
 } from '../types/chronos.ts';
 import {
   GitCommit,
   GitBranch,
   Play,
-  RotateCcw,
   Webhook,
   CheckCircle2,
   AlertTriangle,
@@ -25,6 +25,7 @@ interface DagTimeTravelViewProps {
   selectedRunId: string;
   onSelectRun: (runId: string) => void;
   checkpoints: StateCheckpoint[];
+  discoveredKernels: KaggleKernelSummary[];
   onPollKaggleKernel: (runId: string, kernelSlug: string) => Promise<void>;
   onResumeCheckpoint: (
     runId: string,
@@ -41,6 +42,7 @@ export const DagTimeTravelView: React.FC<DagTimeTravelViewProps> = ({
   selectedRunId,
   onSelectRun,
   checkpoints,
+  discoveredKernels,
   onPollKaggleKernel,
   onResumeCheckpoint,
   onRunGeminiAgentStep,
@@ -52,21 +54,25 @@ export const DagTimeTravelView: React.FC<DagTimeTravelViewProps> = ({
     .sort((a, b) => a.stepIndex - b.stepIndex);
 
   const [selectedCpId, setSelectedCpId] = useState<string>('');
+  const [selectedFileIdx, setSelectedFileIdx] = useState<number>(0);
+  const [customKernelToSync, setCustomKernelToSync] = useState<string>(
+    'raviikishore07/project-zero-ram-fdtd-gpu'
+  );
   const [webhookJsonInput, setWebhookJsonInput] = useState<string>(
     JSON.stringify(
       {
-        event: 'KAGGLE_KERNEL_STEP_1000_COMPLETE',
+        event: 'KAGGLE_KERNEL_NEXT_SWEEP_READY',
         kernel: 'raviikishore07/project-zero-ram-fdtd-gpu',
-        vram_peak_gb: 11.42,
-        host_ram_leak_bytes: 0,
-        verified_signature: 'sha256:9f82c104a8e',
+        run_id: 'ZR-LLM-COSIM-030',
+        overall_verdict: 'SURVIVES',
+        expected_calibration_error_ece: 0.091284,
       },
       null,
       2
     )
   );
   const [stepInstruction, setStepInstruction] = useState<string>(
-    'Verify FDTD grid boundary conditions and commit updated VRAM telemetry artifact to workspace.'
+    'Verify T20f thermal drift (-0.0165%) and MLA KV VRAM savings (92.12%) and persist updated checkpoint to Neon PostgreSQL.'
   );
   const [webhookError, setWebhookError] = useState<string | null>(null);
 
@@ -98,14 +104,20 @@ export const DagTimeTravelView: React.FC<DagTimeTravelViewProps> = ({
     }
   };
 
-  // Compute state diff keys between parentCheckpoint and activeCheckpoint
   const currentVars = activeCheckpoint?.stateSnapshot.variables || {};
   const parentVars = parentCheckpoint?.stateSnapshot.variables || {};
-  const allVarKeys = Array.from(new Set([...Object.keys(parentVars), ...Object.keys(currentVars)]));
+  const allVarKeys = Array.from(
+    new Set([...Object.keys(parentVars), ...Object.keys(currentVars)])
+  );
+
+  const inspectedFile =
+    activeCheckpoint?.workspaceFiles[selectedFileIdx] ||
+    activeCheckpoint?.workspaceFiles[0] ||
+    null;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-      {/* Left Column: Durable Runs Queue & Kaggle Kernel Selector (4 cols) */}
+      {/* Left Column: Durable Runs Queue & Live Kaggle Kernel Reconciler (4 cols) */}
       <div className="lg:col-span-4 space-y-6">
         <div className="border border-slate-800 bg-[#111827]/70 rounded-lg p-5">
           <div className="flex items-center justify-between mb-4">
@@ -126,6 +138,7 @@ export const DagTimeTravelView: React.FC<DagTimeTravelViewProps> = ({
                   onClick={() => {
                     onSelectRun(run.id);
                     setSelectedCpId(run.currentCheckpointId);
+                    setSelectedFileIdx(0);
                   }}
                   className={`w-full text-left p-3.5 rounded-md border transition-colors ${
                     isSelected
@@ -150,7 +163,6 @@ export const DagTimeTravelView: React.FC<DagTimeTravelViewProps> = ({
                     </span>
                   </div>
 
-                  {/* Unboxed metadata with typographic separators */}
                   <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-400 font-mono tabular-nums">
                     <span>{run.threadId}</span>
                     <span aria-hidden="true">·</span>
@@ -166,7 +178,7 @@ export const DagTimeTravelView: React.FC<DagTimeTravelViewProps> = ({
                   {run.kaggleKernelSlug && (
                     <div className="mt-2 pt-2 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400 font-mono">
                       <span className="truncate">{run.kaggleKernelSlug}</span>
-                      <span className="text-slate-500 shrink-0">GPU T4</span>
+                      <span className="text-emerald-400 shrink-0">LIVE API</span>
                     </div>
                   )}
                 </button>
@@ -175,31 +187,30 @@ export const DagTimeTravelView: React.FC<DagTimeTravelViewProps> = ({
           </div>
         </div>
 
-        {/* Kaggle GPU Kernel Telemetry & Reconciler Panel */}
+        {/* Live Kaggle Bearer API Kernel Reconciler Panel */}
         <div className="border border-slate-800 bg-[#111827]/70 rounded-lg p-5">
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-2">
             <h2 className="text-base font-semibold text-slate-100">
-              02. Kaggle GPU Kernel Reconciler
+              02. Live Kaggle GPU Kernel Reconciler
             </h2>
             <Cpu className="w-4 h-4 text-blue-400 shrink-0" />
           </div>
           <p className="text-xs text-slate-400 leading-relaxed mb-4">
-            Synchronize state checkpoints with configured Kaggle GPU runs for{' '}
-            <span className="font-mono text-slate-200">RaviiKishore07</span> without losing
-            upstream agent context.
+            Authenticated via Kaggle Bearer token (<span className="font-mono text-slate-200">KGAT_***</span>) for{' '}
+            <span className="font-mono text-slate-200">RaviiKishore07</span> ({discoveredKernels.length || 19} live kernels discovered).
           </p>
 
           <div className="space-y-3">
             {[
               {
                 slug: 'raviikishore07/project-zero-ram-fdtd-gpu',
-                label: 'Project Zero-RAM FDTD GPU',
-                metrics: 'Tesla T4 · 0 MB Host RAM Delta · 4.82 Gcells/s',
+                label: 'Project Zero-RAM FDTD GPU (ZR-LLM-COSIM-030)',
+                metrics: 'Verdict: SURVIVES · ECE: 0.09128 · 940nm · zr_llm_cosim_030_gpu.json',
               },
               {
                 slug: 'raviikishore07/kaggle-v7-production-t4',
-                label: 'Holygrail V7 Production T4',
-                metrics: 'Tesla T4 · FP16 Tensor Sync · 14.2 / 16.0 GB VRAM',
+                label: 'Holygrail V7 Production T4 (2x Tesla T4)',
+                metrics: '3,881.6 MB vs 14,739.2 MB OOM · 92.12% MLA KV Saved · production_300m_report_t4.json',
               },
             ].map((k) => (
               <div
@@ -210,10 +221,10 @@ export const DagTimeTravelView: React.FC<DagTimeTravelViewProps> = ({
                   <div className="text-xs font-semibold text-slate-200 truncate">
                     {k.label}
                   </div>
-                  <div className="text-xs font-mono text-slate-400 truncate mt-0.5">
+                  <div className="text-xs font-mono text-blue-400 truncate mt-0.5">
                     {k.slug}
                   </div>
-                  <div className="text-xs text-slate-500 mt-1">{k.metrics}</div>
+                  <div className="text-xs text-slate-400 mt-1">{k.metrics}</div>
                 </div>
                 <button
                   onClick={() => onPollKaggleKernel(selectedRun.id, k.slug)}
@@ -225,22 +236,50 @@ export const DagTimeTravelView: React.FC<DagTimeTravelViewProps> = ({
                       busyAction === `poll_${k.slug}` ? 'animate-spin' : ''
                     }`}
                   />
-                  Sync Kernel
+                  Pull Live Output
                 </button>
               </div>
             ))}
+
+            {/* Selector for all 19 discovered Kaggle kernels */}
+            {discoveredKernels.length > 0 && (
+              <div className="pt-3 border-t border-slate-800 space-y-2">
+                <label className="block text-xs text-slate-400">
+                  Sync Any Discovered Kernel from RaviiKishore07 ({discoveredKernels.length} Available):
+                </label>
+                <div className="flex items-center gap-2">
+                  <select
+                    value={customKernelToSync}
+                    onChange={(e) => setCustomKernelToSync(e.target.value)}
+                    className="flex-1 bg-slate-950 border border-slate-800 rounded-md px-2.5 py-1.5 text-xs font-mono text-slate-200 focus:outline-none focus:border-blue-500 truncate"
+                  >
+                    {discoveredKernels.map((dk) => (
+                      <option key={dk.ref} value={dk.ref}>
+                        {dk.ref} ({dk.title})
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={() => onPollKaggleKernel(selectedRun.id, customKernelToSync)}
+                    disabled={busyAction !== null}
+                    className="px-3 py-1.5 text-xs font-medium text-slate-100 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-md whitespace-nowrap shrink-0"
+                  >
+                    Sync Selected
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
       {/* Right Column: DAG Checkpoint Lineage, State Diffing & Webhook Resume (8 cols) */}
       <div className="lg:col-span-8 space-y-6">
-        {/* DAG Lineage Timeline */}
         <div className="border border-slate-800 bg-[#111827]/70 rounded-lg p-5">
           <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
             <div>
               <h2 className="text-base font-semibold text-slate-100">
-                03. LangGraph / PostgreSQL (pgvector) Checkpoint Lineage
+                03. Neon PostgreSQL 18.6 (`neondb` + `pgvector 0.8.6`) Checkpoint Lineage
               </h2>
               <div className="flex items-center gap-2 text-xs text-slate-400 mt-1 font-mono tabular-nums">
                 <span>Thread: {selectedRun.threadId}</span>
@@ -271,7 +310,6 @@ export const DagTimeTravelView: React.FC<DagTimeTravelViewProps> = ({
             </div>
           </div>
 
-          {/* Horizontal / Interactive DAG Step Nodes */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-5">
             {runCheckpoints.map((cp) => {
               const isSelected = activeCheckpoint?.id === cp.id;
@@ -279,7 +317,10 @@ export const DagTimeTravelView: React.FC<DagTimeTravelViewProps> = ({
               return (
                 <button
                   key={cp.id}
-                  onClick={() => setSelectedCpId(cp.id)}
+                  onClick={() => {
+                    setSelectedCpId(cp.id);
+                    setSelectedFileIdx(0);
+                  }}
                   className={`text-left p-3.5 rounded-md border transition-colors ${
                     isSelected
                       ? 'border-blue-500 bg-blue-950/30'
@@ -318,7 +359,6 @@ export const DagTimeTravelView: React.FC<DagTimeTravelViewProps> = ({
             })}
           </div>
 
-          {/* Execute Next Gemini Durable Step */}
           <div className="pt-4 border-t border-slate-800/80 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <input
               type="text"
@@ -355,13 +395,12 @@ export const DagTimeTravelView: React.FC<DagTimeTravelViewProps> = ({
               <div className="text-right font-mono tabular-nums text-xs text-slate-400">
                 <div>Merkle: {activeCheckpoint.workspaceMerkleRoot.slice(0, 16)}...</div>
                 <div className="text-slate-500">
-                  Redis Key: {activeCheckpoint.redisCacheKey} (TTL{' '}
-                  {activeCheckpoint.redisTtlSeconds}s)
+                  Cache Key: {activeCheckpoint.redisCacheKey}
                 </div>
               </div>
             </div>
 
-            {/* Webhook / Approval Pause Gate Controls (Always interactive so users can test webhook injection on any checkpoint) */}
+            {/* Webhook / Approval Pause Gate Controls */}
             <div className="p-4 rounded-md border border-slate-800 bg-slate-950/70 space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2 text-xs font-semibold text-slate-200">
@@ -420,7 +459,7 @@ export const DagTimeTravelView: React.FC<DagTimeTravelViewProps> = ({
               </div>
             </div>
 
-            {/* State Snapshot Diff Table & pgvector Embedding Preview */}
+            {/* State Snapshot Diff & Synced Artifact Content Viewer */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="border border-slate-800 rounded-md overflow-hidden">
                 <div className="px-3.5 py-2.5 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between">
@@ -432,7 +471,7 @@ export const DagTimeTravelView: React.FC<DagTimeTravelViewProps> = ({
                     +{activeCheckpoint.tokenDelta} tok
                   </span>
                 </div>
-                <div className="divide-y divide-slate-800/70 max-h-60 overflow-y-auto">
+                <div className="divide-y divide-slate-800/70 max-h-64 overflow-y-auto">
                   {allVarKeys.map((key) => {
                     const beforeVal = JSON.stringify(parentVars[key]);
                     const afterVal = JSON.stringify(currentVars[key]);
@@ -463,41 +502,51 @@ export const DagTimeTravelView: React.FC<DagTimeTravelViewProps> = ({
                 </div>
               </div>
 
-              {/* Workspace File Tree & pgvector(768) Vector State */}
+              {/* Checkpointed Workspace Files & Live Kaggle JSON Artifact Preview */}
               <div className="border border-slate-800 rounded-md overflow-hidden flex flex-col justify-between">
                 <div>
                   <div className="px-3.5 py-2.5 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between">
                     <span className="text-xs font-semibold text-slate-200 flex items-center gap-1.5">
                       <FileCode className="w-3.5 h-3.5 text-blue-400" />
-                      Checkpointed Workspace Files ({activeCheckpoint.workspaceFiles.length})
+                      Checkpointed Artifacts ({activeCheckpoint.workspaceFiles.length})
                     </span>
-                    <span className="text-xs font-mono text-slate-400">SHA-256 Verified</span>
+                    <span className="text-xs font-mono text-slate-400">Click to Inspect</span>
                   </div>
                   <div className="divide-y divide-slate-800/70">
-                    {activeCheckpoint.workspaceFiles.map((file) => (
-                      <div
+                    {activeCheckpoint.workspaceFiles.map((file, idx) => (
+                      <button
                         key={file.path}
-                        className="px-3.5 py-2 text-xs font-mono flex items-center justify-between gap-2"
+                        onClick={() => setSelectedFileIdx(idx)}
+                        className={`w-full text-left px-3.5 py-2 text-xs font-mono flex items-center justify-between gap-2 transition-colors ${
+                          selectedFileIdx === idx
+                            ? 'bg-blue-950/30 text-blue-300'
+                            : 'text-slate-200 hover:bg-slate-900/50'
+                        }`}
                       >
-                        <span className="text-slate-200 truncate">{file.path}</span>
+                        <span className="truncate">{file.path}</span>
                         <span className="text-slate-400 tabular-nums shrink-0">
                           {file.sizeBytes} B · {file.sha256.slice(0, 8)}
                         </span>
-                      </div>
+                      </button>
                     ))}
                   </div>
+                  {inspectedFile && (
+                    <pre className="p-3 bg-slate-950 text-xs font-mono text-slate-300 max-h-40 overflow-y-auto border-t border-slate-800">
+                      {inspectedFile.content}
+                    </pre>
+                  )}
                 </div>
 
                 <div className="p-3 bg-slate-950/80 border-t border-slate-800 text-xs font-mono text-slate-400">
                   <div className="flex items-center justify-between mb-1">
                     <span className="flex items-center gap-1.5 text-slate-300">
                       <Database className="w-3.5 h-3.5 text-blue-400" />
-                      pgvector(768) State Embedding
+                      Neon pgvector(0.8.6) State Embedding
                     </span>
-                    <span>HNSW Cosine Index</span>
+                    <span>neondb · vector(8)</span>
                   </div>
                   <div className="truncate text-slate-500 tabular-nums">
-                    [{activeCheckpoint.pgvectorEmbeddingPreview.join(', ')}, ... 760 dims]
+                    [{activeCheckpoint.pgvectorEmbeddingPreview.join(', ')}]
                   </div>
                 </div>
               </div>

@@ -3,17 +3,15 @@ import {
   DurableRun,
   TrajectoryEvent,
   DeadLetterDump,
-  RunStatus,
 } from '../types/chronos.ts';
 import {
-  ShieldAlert,
   Hash,
-  Flame,
   Wrench,
   Play,
   CheckCircle2,
   XCircle,
   FileWarning,
+  Search,
 } from 'lucide-react';
 
 interface TrajectoryCircuitViewProps {
@@ -22,7 +20,6 @@ interface TrajectoryCircuitViewProps {
   onSelectRun: (runId: string) => void;
   trajectoryEvents: TrajectoryEvent[];
   dlqDumps: DeadLetterDump[];
-  onTrigger3StrikeSpiral: (runId: string) => Promise<void>;
   onReplayDlqDump: (dlqId: string, patchedCommand: string) => Promise<void>;
   busyAction: string | null;
 }
@@ -33,11 +30,13 @@ export const TrajectoryCircuitView: React.FC<TrajectoryCircuitViewProps> = ({
   onSelectRun,
   trajectoryEvents,
   dlqDumps,
-  onTrigger3StrikeSpiral,
   onReplayDlqDump,
   busyAction,
 }) => {
   const [selectedDlqId, setSelectedDlqId] = useState<string>(dlqDumps[0]?.id || '');
+  const [hashFilter, setHashFilter] = useState<string>('');
+  const [onlyFailures, setOnlyFailures] = useState<boolean>(false);
+
   const activeDlq =
     dlqDumps.find((d) => d.id === selectedDlqId) || dlqDumps[0] || null;
 
@@ -46,29 +45,62 @@ export const TrajectoryCircuitView: React.FC<TrajectoryCircuitViewProps> = ({
   );
 
   const selectedRun = runs.find((r) => r.id === selectedRunId) || runs[0];
+
   const filteredEvents = trajectoryEvents
+    .filter((ev) => {
+      if (onlyFailures && ev.exitCode === 0) return false;
+      if (
+        hashFilter.trim() &&
+        !ev.argSha256Hash.toLowerCase().includes(hashFilter.toLowerCase()) &&
+        !ev.canonicalArgsJson.toLowerCase().includes(hashFilter.toLowerCase()) &&
+        !(ev.normalizedCommandSig || '').toLowerCase().includes(hashFilter.toLowerCase())
+      ) {
+        return false;
+      }
+      return true;
+    })
     .slice()
     .reverse();
 
-  const totalSavedUsd = runs.reduce((acc, r) => acc + r.savedCostUsd, 0);
-
   return (
     <div className="space-y-6">
-      {/* Top Circuit Breaker Telemetry Header */}
+      {/* Circuit Breaker Policy & Filter Header */}
       <div className="border border-slate-800 bg-[#111827]/70 rounded-lg p-5">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h2 className="text-base font-semibold text-slate-100">
-              01. Deterministic SHA-256 Trajectory Monitor & 3-Strike Circuit Breaker
+              Hybrid 2-Tier Trajectory Monitor (SHA-256 AST + pgvector Cosine) & Dead-Letter Queue
             </h2>
             <p className="text-xs text-slate-400 mt-0.5">
-              Canonicalizes consecutive tool-call AST arguments (stripping volatile timestamps
-              and nonces) and halts runaway retry spirals at Strike 3, routing structured crash
-              dumps to the Dead-Letter Queue.
+              Tier 1 normalizes CLI flag permutations into canonical SHA-256 digests; Tier 2
+              computes 8-dim trigram/SimHash cosine similarity (`&gt;= 0.88`) in Neon `pgvector`
+              to halt semantic loops at Strike 3.
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center bg-slate-950 border border-slate-800 rounded-md px-2.5 py-1.5">
+              <Search className="w-3.5 h-3.5 text-slate-500 mr-1.5" />
+              <input
+                type="text"
+                value={hashFilter}
+                onChange={(e) => setHashFilter(e.target.value)}
+                placeholder="Filter by SHA-256 or normalized AST..."
+                className="bg-transparent text-xs font-mono text-slate-200 focus:outline-none w-52"
+              />
+            </div>
+
+            <button
+              onClick={() => setOnlyFailures((prev) => !prev)}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md border transition-colors whitespace-nowrap shrink-0 ${
+                onlyFailures
+                  ? 'bg-red-950/50 border-red-800 text-red-300'
+                  : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              {onlyFailures ? 'Showing Non-Zero Exits Only' : 'All Tool Invocations'}
+            </button>
+
             <select
               value={selectedRun?.id || ''}
               onChange={(e) => onSelectRun(e.target.value)}
@@ -80,47 +112,6 @@ export const TrajectoryCircuitView: React.FC<TrajectoryCircuitViewProps> = ({
                 </option>
               ))}
             </select>
-
-            {selectedRun && selectedRun.status !== RunStatus.CIRCUIT_HALTED && (
-              <button
-                onClick={() => onTrigger3StrikeSpiral(selectedRun.id)}
-                disabled={busyAction !== null}
-                className="px-3.5 py-1.5 text-xs font-medium text-white bg-red-600 hover:bg-red-500 disabled:opacity-50 rounded-md transition-colors whitespace-nowrap shrink-0 flex items-center gap-1.5"
-              >
-                <Flame className="w-3.5 h-3.5" />
-                {busyAction === 'spiral_sim'
-                  ? 'Executing 3 Strikes...'
-                  : 'Simulate 3-Strike Dependency Spiral'}
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Summary Metrics Row */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4 pt-4 border-t border-slate-800 font-mono tabular-nums">
-          <div>
-            <div className="text-xs text-slate-400 font-sans">
-              Hash Canonicalization Overhead
-            </div>
-            <div className="text-sm font-semibold text-slate-100 mt-0.5">
-              0.004 ms · 0 LLM Supervisor Tokens
-            </div>
-          </div>
-          <div>
-            <div className="text-xs text-slate-400 font-sans">
-              Active Circuit Breaker Policy
-            </div>
-            <div className="text-sm font-semibold text-amber-400 mt-0.5">
-              3 Consecutive Identical SHA-256 Semantic Failures → HALT
-            </div>
-          </div>
-          <div>
-            <div className="text-xs text-slate-400 font-sans">
-              Overnight Token Burn Prevented
-            </div>
-            <div className="text-sm font-semibold text-emerald-400 mt-0.5">
-              ${totalSavedUsd.toFixed(2)} USD Saved Across {dlqDumps.length} Halted Spirals
-            </div>
           </div>
         </div>
       </div>
@@ -131,14 +122,14 @@ export const TrajectoryCircuitView: React.FC<TrajectoryCircuitViewProps> = ({
           <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between">
             <span className="text-sm font-semibold text-slate-100 flex items-center gap-2">
               <Hash className="w-4 h-4 text-blue-400" />
-              02. Live Tool-Call SHA-256 Trajectory Stream
+              Tool-Call SHA-256 & pgvector Trajectory Stream
             </span>
             <span className="text-xs font-mono tabular-nums text-slate-400">
-              {filteredEvents.length} Events Logged
+              {filteredEvents.length} Events
             </span>
           </div>
 
-          <div className="divide-y divide-slate-800/80 max-h-[540px] overflow-y-auto">
+          <div className="divide-y divide-slate-800/80 max-h-[620px] overflow-y-auto">
             {filteredEvents.map((ev) => {
               const isStrike3 = ev.consecutiveStrikeNumber >= 3;
               return (
@@ -166,9 +157,21 @@ export const TrajectoryCircuitView: React.FC<TrajectoryCircuitViewProps> = ({
                       >
                         Exit {ev.exitCode}
                       </span>
+                      {ev.loopMatchTier && ev.loopMatchTier !== 'NOMINAL' && (
+                        <>
+                          <span className="text-slate-500">·</span>
+                          <span className="text-amber-300">{ev.loopMatchTier}</span>
+                        </>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-2 text-xs font-mono tabular-nums">
+                      {typeof ev.semanticSimilarityScore === 'number' &&
+                        ev.semanticSimilarityScore > 0 && (
+                          <span className="text-slate-400">
+                            Cosine: {ev.semanticSimilarityScore.toFixed(3)}
+                          </span>
+                        )}
                       {ev.consecutiveStrikeNumber > 0 && (
                         <span
                           className={
@@ -178,7 +181,7 @@ export const TrajectoryCircuitView: React.FC<TrajectoryCircuitViewProps> = ({
                           }
                         >
                           Strike {ev.consecutiveStrikeNumber}/3
-                          {isStrike3 ? ' [CIRCUIT HALTED]' : ''}
+                          {isStrike3 ? ' [CIRCUIT OPEN]' : ''}
                         </span>
                       )}
                       {ev.wasRolledBack && (
@@ -187,7 +190,6 @@ export const TrajectoryCircuitView: React.FC<TrajectoryCircuitViewProps> = ({
                     </div>
                   </div>
 
-                  {/* Canonical AST JSON & SHA-256 Digest */}
                   <div className="p-2.5 rounded bg-slate-950 border border-slate-800/90 text-xs font-mono space-y-1">
                     <div className="flex items-center justify-between gap-2 text-slate-400">
                       <span className="truncate">
@@ -195,10 +197,26 @@ export const TrajectoryCircuitView: React.FC<TrajectoryCircuitViewProps> = ({
                       </span>
                       <span className="shrink-0 tabular-nums">{ev.durationMs}ms</span>
                     </div>
+                    {ev.normalizedCommandSig && (
+                      <div className="text-emerald-400/90 break-all">
+                        Normalized Flag AST: {ev.normalizedCommandSig}
+                      </div>
+                    )}
                     <div className="text-slate-300 break-all">
-                      Canonical AST: {ev.canonicalArgsJson}
+                      Canonical JSON: {ev.canonicalArgsJson}
                     </div>
+                    {ev.traceparent && (
+                      <div className="text-slate-500 truncate">
+                        W3C traceparent: {ev.traceparent}
+                      </div>
+                    )}
                   </div>
+
+                  {ev.abortedFileDiff?.unifiedPatch && (
+                    <pre className="text-xs font-mono text-amber-300/90 bg-slate-950 border border-slate-800 rounded p-2.5 overflow-x-auto">
+                      {ev.abortedFileDiff.unifiedPatch}
+                    </pre>
+                  )}
 
                   {ev.stderr && (
                     <div className="text-xs font-mono text-red-300/90 bg-red-950/30 border border-red-900/40 rounded px-2.5 py-1.5 whitespace-pre-wrap">
@@ -216,14 +234,13 @@ export const TrajectoryCircuitView: React.FC<TrajectoryCircuitViewProps> = ({
           <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between">
             <span className="text-sm font-semibold text-slate-100 flex items-center gap-2">
               <FileWarning className="w-4 h-4 text-red-400" />
-              03. Dead-Letter Queue (DLQ) Crash Dumps
+              Dead-Letter Queue (DLQ) Crash Dumps
             </span>
             <span className="text-xs font-mono tabular-nums text-slate-400">
               {dlqDumps.length} Dumps
             </span>
           </div>
 
-          {/* DLQ Selector List */}
           <div className="divide-y divide-slate-800 border-b border-slate-800">
             {dlqDumps.map((dump) => {
               const isSelected = activeDlq?.id === dump.id;
@@ -250,8 +267,8 @@ export const TrajectoryCircuitView: React.FC<TrajectoryCircuitViewProps> = ({
                     </span>
                   </div>
                   <div className="text-xs font-mono text-slate-400 truncate mt-1">
-                    Hash: {dump.triggerHash.slice(0, 20)}... · Saved $
-                    {dump.estimatedOvernightCostSavedUsd.toFixed(2)}
+                    Hash: {dump.triggerHash.slice(0, 20)}... · Halted at{' '}
+                    {dump.haltedAtCheckpointId}
                   </div>
                 </button>
               );
@@ -265,7 +282,7 @@ export const TrajectoryCircuitView: React.FC<TrajectoryCircuitViewProps> = ({
                   {activeDlq.failureSignature}
                 </div>
                 <div className="text-xs text-slate-400 font-mono tabular-nums">
-                  Halted at {activeDlq.haltedAtCheckpointId} · Pre-Spiral Checkpoint:{' '}
+                  Halted at {activeDlq.haltedAtCheckpointId} · Last Clean Snapshot:{' '}
                   {activeDlq.crashDumpPayload.lastValidCheckpointId}
                 </div>
               </div>
@@ -279,11 +296,10 @@ export const TrajectoryCircuitView: React.FC<TrajectoryCircuitViewProps> = ({
                 </pre>
               </div>
 
-              {/* Interactive Patch & Replay Form */}
               <div className="p-3.5 rounded-md bg-slate-950/90 border border-slate-800 space-y-3">
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-200">
                   <Wrench className="w-3.5 h-3.5 text-blue-400" />
-                  <span>Patch Tool Arguments & Replay From Pre-Spiral Snapshot</span>
+                  <span>Patch Tool Arguments & Replay From Clean Snapshot</span>
                 </div>
                 <p className="text-xs text-slate-400">
                   {activeDlq.crashDumpPayload.suggestedRemediation}
