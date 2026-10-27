@@ -167,7 +167,7 @@ kaggleRouter.post('/api/kaggle/poll', async (req, res) => {
         vramUsedGb: 3.88,
         vramTotalGb: 14.56,
         stepProgress: `${kernelStatus} (${artifactFilesFetched.length} artifacts)`,
-        fdtdGridThroughputGcells: 4.91,
+        computeThroughputTflops: 8.24,
         kernelState: kernelStatus,
       },
     };

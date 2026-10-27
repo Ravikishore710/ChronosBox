@@ -10,22 +10,25 @@ import {
   ReferenceLine,
 } from 'recharts';
 import { SandboxContainerTelemetry, RunStatus } from '../types/chronos.ts';
-import { Activity, Cpu, HardDrive, Pause, Play, RefreshCw } from 'lucide-react';
+import { maskSecretIdentifier } from '../utils/privacy.ts';
+import { Pause, Play, RefreshCw } from 'lucide-react';
 
 interface SandboxResourceUsageProps {
   selectedRunId: string;
   onSelectRun?: (runId: string) => void;
+  revealSecrets?: boolean;
 }
 
 export const SandboxResourceUsage: React.FC<SandboxResourceUsageProps> = ({
   selectedRunId,
   onSelectRun,
+  revealSecrets = false,
 }) => {
   const [containers, setContainers] = useState<SandboxContainerTelemetry[]>([]);
   const [lastPolledAt, setLastPolledAt] = useState<string>('');
   const [isPolling, setIsPolling] = useState<boolean>(true);
   const [pollIntervalMs, setPollIntervalMs] = useState<number>(2000);
-  const [viewMode, setViewMode] = useState<'FOCUSED_RUN' | 'ALL_CONTAINERS'>('ALL_CONTAINERS');
+  const [viewMode, setViewMode] = useState<'FOCUSED_RUN' | 'ALL_CONTAINERS'>('FOCUSED_RUN');
   const [loading, setLoading] = useState<boolean>(true);
 
   const pollMetrics = useCallback(async () => {
@@ -38,7 +41,7 @@ export const SandboxResourceUsage: React.FC<SandboxResourceUsageProps> = ({
         setLastPolledAt(data.polledAt || new Date().toISOString());
       }
     } catch {
-      // Keep last known samples if network hiccups
+      // Retain last sample if network hiccups
     } finally {
       setLoading(false);
     }
@@ -58,39 +61,23 @@ export const SandboxResourceUsage: React.FC<SandboxResourceUsageProps> = ({
     viewMode === 'FOCUSED_RUN' && focusedContainer ? [focusedContainer] : containers;
 
   return (
-    <div className="border border-slate-800 bg-[#111827]/70 rounded-lg p-5 space-y-5">
-      {/* Header & Real-Time Polling Controls */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-4">
+    <div className="border border-slate-800/80 bg-[#0F1624] rounded-lg overflow-hidden">
+      <div className="px-6 py-4 border-b border-slate-800/80 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h3 className="text-base font-semibold text-slate-100 flex items-center gap-2">
-            <Activity className="w-4 h-4 text-blue-400" />
-            Real-Time Docker Sandbox Container Telemetry (`SandboxResourceUsage`)
-          </h3>
-          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400 font-mono tabular-nums mt-1">
-            <span>Driver: cgroup2fs / seccomp-strict</span>
+          <h3 className="text-sm font-semibold text-slate-100">Sandbox Resource Telemetry</h3>
+          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400 font-mono tabular-nums mt-0.5">
+            <span>cgroup2fs</span>
             <span aria-hidden="true">·</span>
-            <span>Active Sandboxes: {containers.length}</span>
+            <span>{containers.length} Containers</span>
             <span aria-hidden="true">·</span>
             <span>
-              Last Sample:{' '}
-              {lastPolledAt ? new Date(lastPolledAt).toLocaleTimeString() : 'Connecting...'}
+              Updated {lastPolledAt ? new Date(lastPolledAt).toLocaleTimeString() : 'Connecting...'}
             </span>
           </div>
         </div>
 
-        {/* Interactive Controls */}
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-1 p-1 bg-slate-950 rounded-md border border-slate-800">
-            <button
-              onClick={() => setViewMode('ALL_CONTAINERS')}
-              className={`px-2.5 py-1 text-xs font-medium rounded transition-colors whitespace-nowrap shrink-0 ${
-                viewMode === 'ALL_CONTAINERS'
-                  ? 'bg-slate-800 text-slate-100'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              All Active Runs ({containers.length})
-            </button>
+          <div className="flex items-center gap-1 p-1 bg-[#090D16] rounded-md border border-slate-800">
             <button
               onClick={() => setViewMode('FOCUSED_RUN')}
               className={`px-2.5 py-1 text-xs font-medium rounded transition-colors whitespace-nowrap shrink-0 ${
@@ -99,36 +86,42 @@ export const SandboxResourceUsage: React.FC<SandboxResourceUsageProps> = ({
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              Selected Run Only
+              Focused Run
+            </button>
+            <button
+              onClick={() => setViewMode('ALL_CONTAINERS')}
+              className={`px-2.5 py-1 text-xs font-medium rounded transition-colors whitespace-nowrap shrink-0 ${
+                viewMode === 'ALL_CONTAINERS'
+                  ? 'bg-slate-800 text-slate-100'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              All Runs ({containers.length})
             </button>
           </div>
 
           <select
             value={pollIntervalMs}
             onChange={(e) => setPollIntervalMs(Number(e.target.value))}
-            className="bg-slate-950 border border-slate-800 rounded-md px-2.5 py-1.5 text-xs font-mono text-slate-200 focus:outline-none focus:border-blue-500"
+            className="bg-[#090D16] border border-slate-800 rounded-md px-2.5 py-1.5 text-xs font-mono text-slate-200 focus:outline-none focus:border-blue-500"
           >
-            <option value={1000}>Poll: 1.0s</option>
-            <option value={2000}>Poll: 2.0s</option>
-            <option value={5000}>Poll: 5.0s</option>
+            <option value={1000}>1.0s</option>
+            <option value={2000}>2.0s</option>
+            <option value={5000}>5.0s</option>
           </select>
 
           <button
             onClick={() => setIsPolling((prev) => !prev)}
-            className={`px-3 py-1.5 text-xs font-medium rounded-md border transition-colors whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
-              isPolling
-                ? 'bg-emerald-950/50 border-emerald-800/80 text-emerald-300'
-                : 'bg-slate-900 border-slate-700 text-slate-300'
-            }`}
+            className="px-3 py-1.5 text-xs font-medium rounded-md border border-slate-800 bg-[#090D16] text-slate-200 hover:bg-slate-900 transition-colors whitespace-nowrap shrink-0 flex items-center gap-1.5"
           >
             {isPolling ? (
               <>
-                <Pause className="w-3.5 h-3.5" />
-                Polling Live
+                <Pause className="w-3.5 h-3.5 text-emerald-400" />
+                Live
               </>
             ) : (
               <>
-                <Play className="w-3.5 h-3.5" />
+                <Play className="w-3.5 h-3.5 text-slate-400" />
                 Paused
               </>
             )}
@@ -136,7 +129,7 @@ export const SandboxResourceUsage: React.FC<SandboxResourceUsageProps> = ({
 
           <button
             onClick={pollMetrics}
-            className="p-1.5 text-slate-300 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-md"
+            className="p-1.5 text-slate-300 bg-[#090D16] hover:bg-slate-900 border border-slate-800 rounded-md"
             title="Sample Container Metrics Now"
           >
             <RefreshCw className="w-3.5 h-3.5" />
@@ -145,12 +138,14 @@ export const SandboxResourceUsage: React.FC<SandboxResourceUsageProps> = ({
       </div>
 
       {loading && containers.length === 0 ? (
-        <div className="h-56 rounded-md bg-slate-950/60 border border-slate-800 animate-pulse" />
+        <div className="h-56 bg-[#090D16]/60 animate-pulse" />
       ) : (
         <div
           className={`grid grid-cols-1 ${
-            displayedContainers.length > 1 ? 'xl:grid-cols-3' : 'xl:grid-cols-1'
-          } gap-5`}
+            displayedContainers.length > 1
+              ? 'xl:grid-cols-3 divide-y xl:divide-y-0 xl:divide-x divide-slate-800/80'
+              : 'xl:grid-cols-1'
+          }`}
         >
           {displayedContainers.map((ctr) => {
             const isSelected = ctr.runId === selectedRunId;
@@ -158,25 +153,24 @@ export const SandboxResourceUsage: React.FC<SandboxResourceUsageProps> = ({
               <div
                 key={ctr.runId}
                 onClick={() => onSelectRun && onSelectRun(ctr.runId)}
-                className={`p-4 rounded-md border transition-colors cursor-pointer space-y-3 ${
-                  isSelected
-                    ? 'border-blue-500/80 bg-slate-950/90'
-                    : 'border-slate-800 bg-slate-950/60 hover:border-slate-700'
+                className={`p-6 transition-colors cursor-pointer space-y-4 ${
+                  isSelected && displayedContainers.length > 1
+                    ? 'bg-blue-950/15'
+                    : 'hover:bg-slate-900/20'
                 }`}
               >
-                {/* Container Header Metadata */}
-                <div className="flex items-start justify-between gap-2">
+                <div className="flex flex-wrap items-center justify-between gap-4">
                   <div className="min-w-0">
-                    <div className="text-xs font-semibold text-slate-100 truncate">
+                    <div className="text-sm font-semibold text-slate-100 truncate">
                       {ctr.runName}
                     </div>
-                    <div className="flex flex-wrap items-center gap-1.5 text-xs font-mono tabular-nums text-slate-400 mt-0.5">
-                      <span>{ctr.containerId}</span>
+                    <div className="flex items-center gap-2 text-xs font-mono tabular-nums text-slate-400 mt-0.5">
+                      <span>{maskSecretIdentifier(ctr.containerId, revealSecrets)}</span>
                       <span aria-hidden="true">·</span>
                       <span
                         className={
                           ctr.status === RunStatus.CIRCUIT_HALTED
-                            ? 'text-red-400'
+                            ? 'text-rose-400'
                             : ctr.status === RunStatus.PAUSED_WEBHOOK
                               ? 'text-amber-400'
                               : 'text-emerald-400'
@@ -186,39 +180,24 @@ export const SandboxResourceUsage: React.FC<SandboxResourceUsageProps> = ({
                       </span>
                     </div>
                   </div>
-                </div>
 
-                {/* Live CPU & Memory Readouts */}
-                <div className="grid grid-cols-2 gap-2.5 pt-1">
-                  <div className="p-2.5 rounded bg-slate-900/90 border border-slate-800/90">
-                    <div className="text-xs text-slate-400 flex items-center justify-between">
-                      <span>CPU Utilization</span>
-                      <Cpu className="w-3.5 h-3.5 text-blue-400" />
+                  <div className="flex items-center gap-6 text-right font-mono tabular-nums">
+                    <div>
+                      <div className="text-xs text-slate-400 font-sans">CPU Load</div>
+                      <div className="text-sm font-semibold text-blue-400">
+                        {ctr.currentCpuPercent.toFixed(1)}%
+                      </div>
                     </div>
-                    <div className="text-sm font-bold font-mono tabular-nums text-blue-400 mt-0.5">
-                      {ctr.currentCpuPercent.toFixed(1)}%
-                    </div>
-                    <div className="text-xs font-mono tabular-nums text-slate-500">
-                      Shares: {ctr.cpuShares}
-                    </div>
-                  </div>
-
-                  <div className="p-2.5 rounded bg-slate-900/90 border border-slate-800/90">
-                    <div className="text-xs text-slate-400 flex items-center justify-between">
-                      <span>RSS Memory</span>
-                      <HardDrive className="w-3.5 h-3.5 text-emerald-400" />
-                    </div>
-                    <div className="text-sm font-bold font-mono tabular-nums text-emerald-400 mt-0.5">
-                      {ctr.currentMemoryMb.toFixed(1)} MB
-                    </div>
-                    <div className="text-xs font-mono tabular-nums text-slate-500">
-                      Quota: {ctr.memoryLimitMb} MB
+                    <div>
+                      <div className="text-xs text-slate-400 font-sans">Memory RSS</div>
+                      <div className="text-sm font-semibold text-emerald-400">
+                        {ctr.currentMemoryMb.toFixed(1)} / {ctr.memoryLimitMb} MB
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Recharts Real-Time CPU (%) & RAM (MB) Line Chart */}
-                <div className="h-48 w-full pt-2">
+                <div className="h-48 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart
                       data={ctr.samples}
@@ -246,7 +225,7 @@ export const SandboxResourceUsage: React.FC<SandboxResourceUsageProps> = ({
                       />
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: '#0B0F17',
+                          backgroundColor: '#090D16',
                           borderColor: '#1E293B',
                           fontSize: '11px',
                           fontFamily: 'JetBrains Mono, monospace',
@@ -283,7 +262,7 @@ export const SandboxResourceUsage: React.FC<SandboxResourceUsageProps> = ({
                   </ResponsiveContainer>
                 </div>
 
-                <div className="flex items-center justify-between text-xs font-mono tabular-nums text-slate-400 pt-1 border-t border-slate-800/80">
+                <div className="flex items-center justify-between text-xs font-mono tabular-nums text-slate-400 pt-2 border-t border-slate-800/70">
                   <span>Peak RAM: {ctr.peakMemoryMb} MB</span>
                   <span>
                     PIDs: {ctr.samples[ctr.samples.length - 1]?.pidsCount || 1} · I/O:{' '}

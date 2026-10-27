@@ -77,8 +77,8 @@ All environment variables are documented in `.env.example`:
 | `REDIS_CACHE_URI` | Optional | Redis / Upstash cache endpoint (falls back to `ChronosAdaptiveL1Cache`). |
 | `KAGGLE_USERNAME` | Optional | Kaggle account username for GPU kernel telemetry sync. |
 | `KAGGLE_KEY` | Optional | Kaggle API token (`KGAT_...` Bearer token or Basic key). |
-| `KAGGLE_GPU_KERNEL_SLUG` | Optional | Primary Kaggle GPU kernel slug (`raviikishore07/project-zero-ram-fdtd-gpu`). |
-| `KAGGLE_ALT_KERNEL_SLUG` | Optional | Secondary Kaggle GPU kernel slug (`raviikishore07/kaggle-v7-production-t4`). |
+| `KAGGLE_GPU_KERNEL_SLUG` | Optional | Primary Kaggle GPU kernel slug (`raviikishore07/kaggle-v7-production-t4`). |
+| `KAGGLE_ALT_KERNEL_SLUG` | Optional | Secondary Kaggle GPU kernel slug (`raviikishore07/nexoralm-300m-pretraining`). |
 | `DISABLE_HMR` | Optional | Set to `"true"` in managed preview environments to disable Vite HMR polling. |
 | `LOG_LEVEL` | Optional | Structured Pino logger verbosity (`info`, `debug`, `warn`, `error`). |
 

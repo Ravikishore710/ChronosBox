@@ -58,22 +58,22 @@ describe('ChronosBox Pure Server Functions & Subsystem Specs', () => {
 
   describe('resolveKaggleSlug', () => {
     it('returns fallback when slug is incomplete or contains conversational spaces', () => {
-      expect(resolveKaggleSlug('raviikishore07/', 'raviikishore07/project-zero-ram-fdtd-gpu')).toBe(
-        'raviikishore07/project-zero-ram-fdtd-gpu'
+      expect(resolveKaggleSlug('raviikishore07/', 'raviikishore07/kaggle-v7-production-t4')).toBe(
+        'raviikishore07/kaggle-v7-production-t4'
       );
       expect(
         resolveKaggleSlug(
           'u can use if u can... but idk',
-          'raviikishore07/kaggle-v7-production-t4'
+          'raviikishore07/nexoralm-300m-pretraining'
         )
-      ).toBe('raviikishore07/kaggle-v7-production-t4');
+      ).toBe('raviikishore07/nexoralm-300m-pretraining');
     });
 
     it('preserves valid owner/kernel slug', () => {
       expect(
         resolveKaggleSlug(
           'raviikishore07/kaggle-v7-production-t4',
-          'raviikishore07/project-zero-ram-fdtd-gpu'
+          'raviikishore07/nexoralm-300m-pretraining'
         )
       ).toBe('raviikishore07/kaggle-v7-production-t4');
     });

@@ -29,16 +29,16 @@ git checkout --orphan chronos-clean-history
 git rm -rf --cached . >/dev/null 2>&1 || true
 
 # Commit 1: Project configuration, TypeScript strict mode, ESLint, Prettier & Lockfile
-git add package.json package-lock.json tsconfig.json vite.config.ts eslint.config.js .prettierrc .npmrc .env.example .gitignore index.html metadata.json
+git add package.json package-lock.json tsconfig.json vite.config.ts vitest.config.ts eslint.config.js .prettierrc.json .npmrc .env.example .gitignore index.html metadata.json
 git commit -m "chore(config): initialize strict TypeScript, ESLint, Prettier, and reproducible npm lockfile"
 
-# Commit 2: Domain types, Zod request validation schemas, and schema unit tests
+# Commit 2: Domain types, Zod request validation schemas, and Pino logger
 git add src/types/chronos.ts src/server/schemas.ts src/server/logger.ts
 git commit -m "feat(types): define durable execution domain contracts, Pino structured logger, and Zod schemas"
 
-# Commit 3: Deterministic AST SHA-256 trajectory hashing, Merkle CAS, and crypto tests
-git add src/server/crypto.ts src/server/patch.ts src/server/cache.ts src/server/engine.test.ts
-git commit -m "feat(engine): implement AST SHA-256 trajectory hashing, RFC 6902 delta compression, and unit tests"
+# Commit 3: Deterministic AST SHA-256 trajectory hashing, Merkle CAS, and delta patch engine
+git add src/server/crypto.ts src/server/patch.ts src/server/cache.ts
+git commit -m "feat(engine): implement AST SHA-256 trajectory hashing, RFC 6902 delta compression, and L1 CAS cache"
 
 # Commit 4: Security headers, token-bucket rate limiter, secret scrubber, and middleware tests
 git add src/server/middleware.ts src/server/middleware.test.ts
@@ -53,16 +53,16 @@ git add src/server/seed.ts src/server/db.ts src/server/benchmark.ts
 git commit -m "feat(db): integrate Neon PostgreSQL 18.6 pgvector checkpoint store and live benchmark profiler"
 
 # Commit 7: Modular Express API routers and server integration tests
-git add src/server/routes/stateRoutes.ts src/server/routes/kaggleRoutes.ts src/server/routes/sandboxRoutes.ts src/server/routes/checkpointRoutes.ts src/server/routes/runRoutes.ts server.ts src/server/routes.test.ts
+git add src/server/routes/stateRoutes.ts src/server/routes/kaggleRoutes.ts src/server/routes/sandboxRoutes.ts src/server/routes/checkpointRoutes.ts src/server/routes/runRoutes.ts server.ts server.test.ts src/server/routes.test.ts
 git commit -m "feat(api): add modular Express routers for checkpoints, sandbox, DLQ replay, and Kaggle sync with tests"
 
-# Commit 8: Sandbox resource monitor and inspector UI components with React Testing Library specs
-git add src/components/SandboxResourceUsage.tsx src/components/SandboxInspectorView.tsx src/components/SandboxInspectorView.test.tsx
-git commit -m "feat(ui): build real-time SandboxResourceUsage cgroup chart and SandboxInspectorView with component tests"
+# Commit 8: Sandbox resource monitor, privacy masking utility, and inspector UI components with specs
+git add src/utils/privacy.ts src/utils/privacy.test.ts src/components/SandboxResourceUsage.tsx src/components/SandboxInspectorView.tsx src/components/SandboxInspectorView.test.tsx
+git commit -m "feat(ui): build secret-masked SandboxResourceUsage cgroup chart and SandboxInspectorView with tests"
 
 # Commit 9: DAG time-travel debugger, 3-strike circuit breaker DLQ view, and App shell with UI tests
-git add src/index.css src/main.tsx src/components/DagTimeTravelView.tsx src/components/TrajectoryCircuitView.tsx src/components/BenchmarksAndArchitectureView.tsx src/components/NewRunModal.tsx src/App.tsx src/App.test.tsx
-git commit -m "feat(ui): implement DAG checkpoint time-travel debugger, 3-strike circuit breaker view, and App test suite"
+git add src/index.css src/main.tsx src/components/DagTimeTravelView.tsx src/components/DagTimeTravelView.test.tsx src/components/TrajectoryCircuitView.tsx src/components/TrajectoryCircuitView.test.tsx src/components/BenchmarksAndArchitectureView.tsx src/components/NewRunModal.tsx src/App.tsx
+git commit -m "feat(ui): implement DAG checkpoint time-travel debugger, 3-strike circuit breaker view, and UI test suites"
 
 # Commit 10: Docker containerization, GitHub Actions CI, Dependabot, and architecture documentation
 git add Dockerfile docker-compose.yml .dockerignore .github/workflows/ci.yml .github/dependabot.yml README.md scripts/build-git-history.sh

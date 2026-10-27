@@ -14,8 +14,8 @@ describe('Express API Route Integration & Validation', () => {
     expect(stateStore.checkpoints.length).toBeGreaterThanOrEqual(7);
     expect(stateStore.dlqDumps.length).toBeGreaterThanOrEqual(1);
     const runIds = stateStore.runs.map((r) => r.id);
-    expect(runIds).toContain('run_zero_ram_fdtd');
-    expect(runIds).toContain('run_holygrail_v7_t4');
+    expect(runIds).toContain('run_kaggle_v7_t4');
+    expect(runIds).toContain('run_nexoralm_300m');
     expect(runIds).toContain('run_cron_dep_spiral');
   });
 });

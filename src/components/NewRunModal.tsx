@@ -1,5 +1,6 @@
 import React from 'react';
 import { WorkflowType, KaggleKernelSummary } from '../types/chronos.ts';
+import { maskKernelSlug } from '../utils/privacy.ts';
 import { X } from 'lucide-react';
 
 interface NewRunModalProps {
@@ -16,6 +17,7 @@ interface NewRunModalProps {
   setNewRunObjective: (v: string) => void;
   discoveredKernels: KaggleKernelSummary[];
   busyAction: string | null;
+  revealSecrets?: boolean;
 }
 
 export const NewRunModal: React.FC<NewRunModalProps> = ({
@@ -32,6 +34,7 @@ export const NewRunModal: React.FC<NewRunModalProps> = ({
   setNewRunObjective,
   discoveredKernels,
   busyAction,
+  revealSecrets = false,
 }) => {
   if (!isOpen) return null;
 
@@ -40,20 +43,20 @@ export const NewRunModal: React.FC<NewRunModalProps> = ({
       ? discoveredKernels
       : [
           {
-            ref: 'raviikishore07/project-zero-ram-fdtd-gpu',
-            title: 'Project Zero RAM FDTD GPU',
+            ref: 'raviikishore07/kaggle-v7-production-t4',
+            title: 'Kaggle V7 Production T4',
             lastRunTime: '',
           },
           {
-            ref: 'raviikishore07/kaggle-v7-production-t4',
-            title: 'Kaggle V7 Production T4',
+            ref: 'raviikishore07/nexoralm-300m-pretraining',
+            title: 'NexoraLM 300M Pretraining',
             lastRunTime: '',
           },
         ];
 
   return (
     <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4">
-      <div className="bg-[#111827] border border-slate-800 rounded-lg max-w-lg w-full p-6 space-y-4">
+      <div className="bg-[#0F1624] border border-slate-800 rounded-lg max-w-lg w-full p-6 space-y-4">
         <div className="flex items-center justify-between border-b border-slate-800 pb-3">
           <h2 className="text-base font-semibold text-slate-100">
             Launch New Durable Agent Thread
@@ -71,7 +74,7 @@ export const NewRunModal: React.FC<NewRunModalProps> = ({
               required
               value={newRunName}
               onChange={(e) => setNewRunName(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-md px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-blue-500"
+              className="w-full bg-[#090D16] border border-slate-800 rounded-md px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-blue-500"
             />
           </div>
 
@@ -81,10 +84,10 @@ export const NewRunModal: React.FC<NewRunModalProps> = ({
               <select
                 value={newRunWorkflow}
                 onChange={(e) => setNewRunWorkflow(e.target.value as WorkflowType)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-md px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-blue-500"
+                className="w-full bg-[#090D16] border border-slate-800 rounded-md px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-blue-500"
               >
                 <option value={WorkflowType.KAGGLE_RECONCILIATION}>
-                  Kaggle GPU Reconciliation
+                  Remote GPU Reconciliation
                 </option>
                 <option value={WorkflowType.CODE_SANDBOX_AGENT}>Isolated Code Sandbox Agent</option>
                 <option value={WorkflowType.CRON_DEPENDENCY_AUDIT}>
@@ -94,16 +97,16 @@ export const NewRunModal: React.FC<NewRunModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs text-slate-300 mb-1">Kaggle GPU Kernel Slug</label>
+              <label className="block text-xs text-slate-300 mb-1">Compute Endpoint</label>
               <select
                 value={newRunKernel}
                 onChange={(e) => setNewRunKernel(e.target.value)}
                 disabled={newRunWorkflow !== WorkflowType.KAGGLE_RECONCILIATION}
-                className="w-full bg-slate-950 border border-slate-800 rounded-md px-3 py-2 text-xs font-mono text-slate-200 disabled:opacity-40 focus:outline-none focus:border-blue-500"
+                className="w-full bg-[#090D16] border border-slate-800 rounded-md px-3 py-2 text-xs font-mono text-slate-200 disabled:opacity-40 focus:outline-none focus:border-blue-500"
               >
                 {kernelOptions.map((k) => (
                   <option key={k.ref} value={k.ref}>
-                    {k.ref}
+                    {maskKernelSlug(k.ref, revealSecrets)} ({k.title})
                   </option>
                 ))}
               </select>
@@ -111,15 +114,13 @@ export const NewRunModal: React.FC<NewRunModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs text-slate-300 mb-1">
-              Durable Agent Objective (Executed via Server-Side Gemini 3.8 Flash)
-            </label>
+            <label className="block text-xs text-slate-300 mb-1">Durable Agent Objective</label>
             <textarea
               rows={3}
               required
               value={newRunObjective}
               onChange={(e) => setNewRunObjective(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-md p-2.5 text-xs text-slate-100 focus:outline-none focus:border-blue-500"
+              className="w-full bg-[#090D16] border border-slate-800 rounded-md p-2.5 text-xs text-slate-100 focus:outline-none focus:border-blue-500"
             />
           </div>
 
@@ -136,9 +137,7 @@ export const NewRunModal: React.FC<NewRunModalProps> = ({
               disabled={busyAction !== null}
               className="px-4 py-2 text-xs font-medium text-white bg-blue-600 hover:bg-blue-500 disabled:opacity-50 rounded-md"
             >
-              {busyAction === 'create_run'
-                ? 'Initializing Checkpoint...'
-                : 'Dispatch Durable Thread'}
+              {busyAction === 'create_run' ? 'Initializing...' : 'Dispatch Durable Thread'}
             </button>
           </div>
         </form>

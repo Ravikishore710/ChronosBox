@@ -18,7 +18,7 @@ export function executeRealEngineBenchmark(iterations = 10000): BenchmarkTrialRe
   for (let i = 0; i < iterations; i++) {
     const canonical = canonicalizeArgs({
       command: 'pip install --no-cache-dir -r requirements.lock',
-      workdir: '/workspace/holygrail_t4',
+      workdir: '/workspace/kaggle_v7',
       attempt: 1,
       timestamp: i,
     });
@@ -39,7 +39,7 @@ export function executeRealEngineBenchmark(iterations = 10000): BenchmarkTrialRe
 
   const sampleFiles: WorkspaceFile[] = [
     buildFile('/workspace/a.py', 'import torch\nprint(torch.__version__)\n'),
-    buildFile('/workspace/b.yaml', 'grid: [1024, 1024, 512]\nzero_ram: true\n'),
+    buildFile('/workspace/b.yaml', 'shards: [1024, 1024, 512]\ndelta_compression: true\n'),
     buildFile('/workspace/c.json', JSON.stringify({ digest: lastDigest })),
   ];
   const startRollback = process.hrtime.bigint();

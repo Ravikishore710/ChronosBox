@@ -146,7 +146,7 @@ export interface StateCheckpoint {
       vramUsedGb: number;
       vramTotalGb: number;
       stepProgress: string;
-      fdtdGridThroughputGcells?: number;
+      computeThroughputTflops?: number;
       kernelState: string;
     } | null;
   };

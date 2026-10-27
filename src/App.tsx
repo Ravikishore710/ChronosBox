@@ -19,17 +19,8 @@ import { SandboxInspectorView } from './components/SandboxInspectorView.tsx';
 import { TrajectoryCircuitView } from './components/TrajectoryCircuitView.tsx';
 import { BenchmarksAndArchitectureView } from './components/BenchmarksAndArchitectureView.tsx';
 import { NewRunModal } from './components/NewRunModal.tsx';
-import {
-  Plus,
-  Search,
-  X,
-  CheckCircle2,
-  AlertTriangle,
-  Database,
-  Cpu,
-  Server,
-  ShieldAlert,
-} from 'lucide-react';
+import { maskKernelSlug, sanitizeDisplayText } from './utils/privacy.ts';
+import { Plus, Search, X, CheckCircle2, AlertTriangle, Eye, EyeOff } from 'lucide-react';
 
 type ActiveTab = 'DAG_CHECKPOINTS' | 'SANDBOX_RUNNER' | 'CIRCUIT_DLQ' | 'SYSTEM_TELEMETRY';
 
@@ -46,9 +37,10 @@ export default function App() {
   const [benchmark, setBenchmark] = useState<BenchmarkTrialResult | null>(null);
   const [diagnostics, setDiagnostics] = useState<InfrastructureDiagnostics | null>(null);
 
-  const [selectedRunId, setSelectedRunId] = useState<string>('run_zero_ram_fdtd');
+  const [selectedRunId, setSelectedRunId] = useState<string>('run_kaggle_v7_t4');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [revealSecrets, setRevealSecrets] = useState<boolean>(false);
 
   const [loadingInitial, setLoadingInitial] = useState<boolean>(true);
   const [busyAction, setBusyAction] = useState<string | null>(null);
@@ -58,15 +50,15 @@ export default function App() {
   } | null>(null);
 
   const [isNewRunModalOpen, setIsNewRunModalOpen] = useState<boolean>(false);
-  const [newRunName, setNewRunName] = useState<string>('Zero-RAM FDTD Co-Simulation Verifier');
+  const [newRunName, setNewRunName] = useState<string>('Kaggle V7 Production T4 Reconciler');
   const [newRunWorkflow, setNewRunWorkflow] = useState<WorkflowType>(
     WorkflowType.KAGGLE_RECONCILIATION
   );
   const [newRunKernel, setNewRunKernel] = useState<string>(
-    'raviikishore07/project-zero-ram-fdtd-gpu'
+    'raviikishore07/kaggle-v7-production-t4'
   );
   const [newRunObjective, setNewRunObjective] = useState<string>(
-    'Pull live Kaggle output for raviikishore07/project-zero-ram-fdtd-gpu (ZR-LLM-COSIM-030), verify ECE <= 0.15 and 300K-350K thermal stability, and commit durable checkpoint to Neon PostgreSQL.'
+    'Verify 92.12% MLA KV VRAM reduction and commit durable checkpoint.'
   );
 
   const notify = (type: 'success' | 'error', text: string) => {
@@ -121,11 +113,11 @@ export default function App() {
         body: JSON.stringify({ runId, kernelSlug }),
       });
       const data = await resp.json();
-      if (!resp.ok) throw new Error(data.error || 'Failed to sync Kaggle kernel');
+      if (!resp.ok) throw new Error(data.error || 'Failed to sync compute endpoint');
       await fetchFullState();
       notify(
         'success',
-        `Pulled live Kaggle output for ${kernelSlug} & committed checkpoint ${data.checkpoint.id} to Neon PostgreSQL`
+        `Synced compute artifact (${maskKernelSlug(kernelSlug, revealSecrets)}) -> Checkpoint ${data.checkpoint.id}`
       );
     } catch (err: unknown) {
       notify('error', extractClientError(err));
@@ -152,7 +144,7 @@ export default function App() {
       await fetchFullState();
       notify(
         'success',
-        `Resumed from ${checkpointId} -> Created ${data.checkpoint.id} in Neon PostgreSQL (0 upstream tokens re-run)`
+        `Resumed from ${checkpointId} -> Created ${data.checkpoint.id} (0 upstream tokens recomputed)`
       );
     } catch (err: unknown) {
       notify('error', extractClientError(err));
@@ -172,7 +164,7 @@ export default function App() {
       const data = await resp.json();
       if (!resp.ok) throw new Error(data.error || 'Failed to execute agent step');
       await fetchFullState();
-      notify('success', `Executed Gemini durable node -> Checkpoint ${data.checkpoint.id}`);
+      notify('success', `Executed durable node -> Checkpoint ${data.checkpoint.id}`);
     } catch (err: unknown) {
       notify('error', extractClientError(err));
     } finally {
@@ -200,7 +192,7 @@ export default function App() {
       await fetchFullState();
       setSelectedRunId(data.run.id);
       setIsNewRunModalOpen(false);
-      notify('success', `Launched durable run "${data.run.name}" (${data.run.threadId})`);
+      notify('success', `Launched durable run "${data.run.name}"`);
     } catch (err: unknown) {
       notify('error', extractClientError(err));
     } finally {
@@ -265,7 +257,7 @@ export default function App() {
       await fetchFullState();
       notify(
         'success',
-        `Patched & replayed ${dlqId} from pre-spiral checkpoint -> Run status: ${data.run.status}`
+        `Patched & replayed ${dlqId} from pre-spiral checkpoint -> Status: ${data.run.status}`
       );
     } catch (err: unknown) {
       notify('error', extractClientError(err));
@@ -301,8 +293,7 @@ export default function App() {
     const matchesSearch =
       !searchQuery.trim() ||
       r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      r.threadId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (r.kaggleKernelSlug && r.kaggleKernelSlug.toLowerCase().includes(searchQuery.toLowerCase()));
+      r.threadId.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesStatus && matchesSearch;
   });
 
@@ -312,8 +303,9 @@ export default function App() {
   const unresolvedDlqCount = dlqDumps.filter((d) => d.resolutionStatus === 'UNRESOLVED').length;
 
   return (
-    <div className="min-h-screen bg-[#0B0F17] text-[#F8FAFC] flex flex-col">
-      <header className="flex items-center justify-between gap-8 px-6 py-4 border-b border-slate-800 bg-[#0B0F17]/95 sticky top-0 z-30">
+    <div className="min-h-screen bg-[#090D16] text-[#F8FAFC] flex flex-col">
+      {/* 3-Zone Top Bar Contract */}
+      <header className="flex items-center justify-between gap-8 px-6 py-4 border-b border-slate-800/80 bg-[#090D16]/95 sticky top-0 z-30">
         <a
           href="#top"
           onClick={(e) => {
@@ -325,13 +317,13 @@ export default function App() {
           ChronosBox
         </a>
 
-        <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-400">
+        <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-400">
           {(
             [
-              { id: 'DAG_CHECKPOINTS', label: 'DAG & Checkpoints' },
-              { id: 'SANDBOX_RUNNER', label: 'Isolated Sandbox' },
-              { id: 'CIRCUIT_DLQ', label: 'Circuit Breaker & DLQ' },
-              { id: 'SYSTEM_TELEMETRY', label: 'System Telemetry' },
+              { id: 'DAG_CHECKPOINTS', label: 'Checkpoints' },
+              { id: 'SANDBOX_RUNNER', label: 'Sandbox' },
+              { id: 'CIRCUIT_DLQ', label: 'Circuit Breaker' },
+              { id: 'SYSTEM_TELEMETRY', label: 'Telemetry' },
             ] as const
           ).map((navItem) => (
             <button
@@ -349,7 +341,7 @@ export default function App() {
         <div className="flex items-center gap-3 shrink-0">
           <button
             onClick={() => setIsNewRunModalOpen(true)}
-            className="px-4 py-2 text-xs font-medium text-white bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors whitespace-nowrap shrink-0 flex items-center gap-1.5"
+            className="px-4 py-2 text-xs font-medium text-white bg-blue-600 hover:bg-blue-500 rounded-md transition-colors whitespace-nowrap shrink-0 flex items-center gap-1.5"
           >
             <Plus className="w-3.5 h-3.5" />
             New Durable Run
@@ -357,22 +349,22 @@ export default function App() {
         </div>
       </header>
 
-      <main className="flex-1 max-w-[1440px] w-full mx-auto px-6 py-6 space-y-6">
+      <main className="flex-1 max-w-[1400px] w-full mx-auto px-6 py-8 space-y-6">
         {toastMessage && (
           <div
-            className={`p-3.5 rounded-md border flex items-center justify-between gap-3 text-xs font-medium ${
+            className={`px-4 py-3 rounded-md border flex items-center justify-between gap-3 text-xs font-medium ${
               toastMessage.type === 'success'
-                ? 'bg-emerald-950/60 border-emerald-800 text-emerald-200'
-                : 'bg-red-950/60 border-red-800 text-red-200'
+                ? 'bg-emerald-950/50 border-emerald-800/80 text-emerald-200'
+                : 'bg-rose-950/50 border-rose-800/80 text-rose-200'
             }`}
           >
             <div className="flex items-center gap-2">
               {toastMessage.type === 'success' ? (
                 <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
               ) : (
-                <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
+                <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
               )}
-              <span>{toastMessage.text}</span>
+              <span>{sanitizeDisplayText(toastMessage.text, revealSecrets)}</span>
             </div>
             <button
               onClick={() => setToastMessage(null)}
@@ -383,107 +375,110 @@ export default function App() {
           </div>
         )}
 
-        <section className="space-y-4">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-100">
-              Durable Execution & Sandbox Control Plane
-            </h1>
-            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400 mt-1 font-mono">
-              <span className="text-emerald-400">
-                {diagnostics?.postgresConnected
-                  ? `Neon ${diagnostics.postgresVersion} (${diagnostics.postgresDatabase}) · pgvector ${diagnostics.pgvectorVersion}`
-                  : 'PostgreSQL + pgvector Active'}
-              </span>
-              <span aria-hidden="true">·</span>
-              <span>
-                Kaggle Bearer Auth: {diagnostics?.kaggleUsername || 'RaviiKishore07'} (
-                {diagnostics?.discoveredKernels?.length || 19} Kernels)
-              </span>
-              <span aria-hidden="true">·</span>
-              <span>Cache: {diagnostics?.redisEndpoint || 'Adaptive L1 + Neon KV'}</span>
+        {/* Executive Overview & Single-Elevation KPI Strip */}
+        <section className="space-y-5">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h1 className="text-xl font-bold tracking-tight text-slate-100">
+                Durable Agent Control Plane
+              </h1>
+              <p className="text-xs text-slate-400 mt-0.5">
+                State checkpointing, transactional workspace sandboxes, and deterministic loop
+                prevention.
+              </p>
             </div>
+
+            <button
+              onClick={() => setRevealSecrets((prev) => !prev)}
+              className="px-3.5 py-1.5 text-xs font-medium rounded-md border border-slate-800 bg-[#0F1624] text-slate-300 hover:text-slate-100 transition-colors whitespace-nowrap shrink-0 flex items-center gap-2"
+              title="Toggle visibility of private kernel slugs, account names, and tokens"
+            >
+              {revealSecrets ? (
+                <>
+                  <Eye className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Identifiers Visible</span>
+                </>
+              ) : (
+                <>
+                  <EyeOff className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Secrets Masked</span>
+                </>
+              )}
+            </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="p-4 rounded-lg border border-slate-800 bg-[#111827]/70">
-              <div className="text-xs text-slate-400 flex items-center justify-between">
-                <span>Persisted State Snapshots</span>
-                <Database className="w-3.5 h-3.5 text-emerald-400" />
-              </div>
+          <div className="border border-slate-800/80 bg-[#0F1624] rounded-lg grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-slate-800/80">
+            <div className="p-5">
+              <div className="text-xs text-slate-400">Persisted State Snapshots</div>
               <div className="text-xl font-bold font-mono tabular-nums text-slate-100 mt-1">
                 {checkpoints.length} Checkpoints
               </div>
-              <div className="text-xs text-slate-400 font-mono tabular-nums mt-1">
-                {runs.length} Threads in {diagnostics?.postgresDatabase || 'neondb'}
+              <div className="text-xs text-slate-500 font-mono tabular-nums mt-0.5">
+                {runs.length} Active Threads
               </div>
             </div>
 
-            <div className="p-4 rounded-lg border border-slate-800 bg-[#111827]/70">
-              <div className="text-xs text-slate-400 flex items-center justify-between">
-                <span>Indexed Kaggle GPU Kernels</span>
-                <Cpu className="w-3.5 h-3.5 text-blue-400" />
-              </div>
+            <div className="p-5">
+              <div className="text-xs text-slate-400">Compute Endpoints</div>
               <div className="text-xl font-bold font-mono tabular-nums text-slate-100 mt-1">
-                {diagnostics?.discoveredKernels?.length || 19} Kernels
+                {diagnostics?.discoveredKernels?.length || 19} Indexed
               </div>
-              <div className="text-xs text-slate-400 font-mono tabular-nums mt-1 truncate">
-                {diagnostics?.resolvedPrimaryKernel || 'raviikishore07/project-zero-ram-fdtd-gpu'}
+              <div className="text-xs text-slate-500 font-mono tabular-nums mt-0.5 truncate">
+                {maskKernelSlug(
+                  diagnostics?.resolvedPrimaryKernel || 'raviikishore07/kaggle-v7-production-t4',
+                  revealSecrets
+                )}
               </div>
             </div>
 
-            <div className="p-4 rounded-lg border border-slate-800 bg-[#111827]/70">
-              <div className="text-xs text-slate-400 flex items-center justify-between">
-                <span>Sandbox Tool Invocations</span>
-                <Server className="w-3.5 h-3.5 text-blue-400" />
-              </div>
+            <div className="p-5">
+              <div className="text-xs text-slate-400">Sandbox Executions</div>
               <div className="text-xl font-bold font-mono tabular-nums text-slate-100 mt-1">
-                {trajectoryEvents.length} Executions
+                {trajectoryEvents.length} Runs
               </div>
-              <div className="text-xs text-amber-400 font-mono tabular-nums mt-1">
-                {totalRollbacks} Atomic Rollbacks (Exit != 0)
+              <div className="text-xs text-amber-400/90 font-mono tabular-nums mt-0.5">
+                {totalRollbacks} Atomic Rollbacks
               </div>
             </div>
 
-            <div className="p-4 rounded-lg border border-slate-800 bg-[#111827]/70">
-              <div className="text-xs text-slate-400 flex items-center justify-between">
-                <span>Circuit Breaker & DLQ</span>
-                <ShieldAlert className="w-3.5 h-3.5 text-red-400" />
-              </div>
+            <div className="p-5">
+              <div className="text-xs text-slate-400">Circuit Breaker & DLQ</div>
               <div className="text-xl font-bold font-mono tabular-nums text-slate-100 mt-1">
-                {unresolvedDlqCount} Unresolved Dumps
+                {unresolvedDlqCount} Halted
               </div>
-              <div className="text-xs text-emerald-400 font-mono tabular-nums mt-1">
-                ${totalSavedUsd.toFixed(2)} Loop Spend Prevented
+              <div className="text-xs text-emerald-400 font-mono tabular-nums mt-0.5">
+                ${totalSavedUsd.toFixed(2)} Loop Spend Saved
               </div>
             </div>
           </div>
         </section>
 
-        <section className="flex flex-wrap items-center justify-between gap-4 p-3.5 rounded-lg border border-slate-800 bg-[#111827]/50">
-          <div className="flex items-center gap-2 flex-1 min-w-[240px]">
-            <Search className="w-4 h-4 text-slate-400 shrink-0" />
+        {/* Clean Filter & Thread Status Toolbar */}
+        <section className="flex flex-wrap items-center justify-between gap-4 px-4 py-3 rounded-lg border border-slate-800/80 bg-[#0F1624]">
+          <div className="flex items-center gap-2.5 flex-1 min-w-[240px]">
+            <Search className="w-4 h-4 text-slate-500 shrink-0" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Filter threads by name, thread_id, or Kaggle kernel slug..."
+              placeholder="Filter threads by name or thread ID..."
               className="w-full bg-transparent text-xs text-slate-100 placeholder-slate-500 focus:outline-none"
             />
           </div>
 
-          <div className="flex items-center gap-1 p-1 bg-slate-950 rounded-md border border-slate-800">
+          <div className="flex items-center gap-1 p-1 bg-[#090D16] rounded-md border border-slate-800">
             {(
               [
                 { id: 'ALL', label: 'All Threads' },
                 { id: RunStatus.RUNNING, label: 'Running' },
-                { id: RunStatus.PAUSED_WEBHOOK, label: 'Paused Webhook' },
-                { id: RunStatus.CIRCUIT_HALTED, label: 'Circuit Halted' },
+                { id: RunStatus.PAUSED_WEBHOOK, label: 'Paused' },
+                { id: RunStatus.CIRCUIT_HALTED, label: 'Halted' },
               ] as const
             ).map((f) => (
               <button
                 key={f.id}
                 onClick={() => setStatusFilter(f.id)}
-                className={`px-2.5 py-1 text-xs font-medium rounded transition-colors whitespace-nowrap shrink-0 ${
+                className={`px-3 py-1 text-xs font-medium rounded transition-colors whitespace-nowrap shrink-0 ${
                   statusFilter === f.id
                     ? 'bg-slate-800 text-slate-100'
                     : 'text-slate-400 hover:text-slate-200'
@@ -497,8 +492,8 @@ export default function App() {
 
         {loadingInitial ? (
           <div className="space-y-4">
-            <div className="h-48 rounded-lg border border-slate-800 bg-slate-900/40 animate-pulse" />
-            <div className="h-64 rounded-lg border border-slate-800 bg-slate-900/40 animate-pulse" />
+            <div className="h-48 rounded-lg border border-slate-800/80 bg-[#0F1624] animate-pulse" />
+            <div className="h-64 rounded-lg border border-slate-800/80 bg-[#0F1624] animate-pulse" />
           </div>
         ) : (
           <>
@@ -513,6 +508,7 @@ export default function App() {
                 onResumeCheckpoint={handleResumeCheckpoint}
                 onRunGeminiAgentStep={handleRunGeminiAgentStep}
                 busyAction={busyAction}
+                revealSecrets={revealSecrets}
               />
             )}
 
@@ -525,6 +521,7 @@ export default function App() {
                 trajectoryEvents={trajectoryEvents}
                 onExecuteSandboxCommand={handleExecuteSandboxCommand}
                 busyAction={busyAction}
+                revealSecrets={revealSecrets}
               />
             )}
 
@@ -537,6 +534,7 @@ export default function App() {
                 dlqDumps={dlqDumps}
                 onReplayDlqDump={handleReplayDlqDump}
                 busyAction={busyAction}
+                revealSecrets={revealSecrets}
               />
             )}
 
@@ -548,21 +546,17 @@ export default function App() {
                 trajectoryEvents={trajectoryEvents}
                 onRunBenchmark={handleRunBenchmark}
                 busyAction={busyAction}
+                revealSecrets={revealSecrets}
               />
             )}
           </>
         )}
       </main>
 
-      <footer className="border-t border-slate-800/80 py-4 px-6 mt-12">
-        <div className="max-w-[1440px] mx-auto flex flex-wrap items-center justify-between gap-4 text-xs text-slate-500">
-          <span>
-            ChronosBox Durable Execution Engine · Neon PostgreSQL 18.6 (`neondb` · `pgvector 0.8.6`)
-          </span>
-          <span className="font-mono">
-            Kaggle Bearer Auth: {diagnostics?.kaggleUsername || 'RaviiKishore07'} (
-            {diagnostics?.discoveredKernels?.length || 19} Kernels)
-          </span>
+      <footer className="border-t border-slate-800/70 py-5 px-6 mt-12">
+        <div className="max-w-[1400px] mx-auto flex flex-wrap items-center justify-between gap-4 text-xs text-slate-500">
+          <span>ChronosBox Durable Execution Engine</span>
+          <span>Secrets & Private Identifiers Masked by Default</span>
         </div>
       </footer>
 
@@ -580,6 +574,7 @@ export default function App() {
         setNewRunObjective={setNewRunObjective}
         discoveredKernels={diagnostics?.discoveredKernels || []}
         busyAction={busyAction}
+        revealSecrets={revealSecrets}
       />
     </div>
   );

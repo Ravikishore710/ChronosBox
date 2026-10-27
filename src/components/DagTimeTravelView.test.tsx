@@ -10,14 +10,14 @@ afterEach(() => {
 
 const mockRuns: DurableRun[] = [
   {
-    id: 'run_zero_ram_fdtd',
+    id: 'run_kaggle_v7_t4',
     threadId: 'th_pgvec_99481a',
-    name: 'Project Zero-RAM FDTD GPU (ZR-LLM-COSIM-030)',
-    description: 'Durable co-simulation verifier',
+    name: 'Kaggle V7 Production T4 (2x Tesla T4)',
+    description: 'Durable telemetry and KV-cache verifier',
     workflowType: WorkflowType.KAGGLE_RECONCILIATION,
-    kaggleKernelSlug: 'raviikishore07/project-zero-ram-fdtd-gpu',
+    kaggleKernelSlug: 'raviikishore07/kaggle-v7-production-t4',
     status: RunStatus.PAUSED_WEBHOOK,
-    currentCheckpointId: 'ckpt_zr_002',
+    currentCheckpointId: 'ckpt_v7_002',
     tokensUsed: 4280,
     costUsd: 0.0128,
     savedCostUsd: 1.84,
@@ -39,15 +39,15 @@ const mockRuns: DurableRun[] = [
 
 const mockCheckpoints: StateCheckpoint[] = [
   {
-    id: 'ckpt_zr_001',
-    runId: 'run_zero_ram_fdtd',
+    id: 'ckpt_v7_001',
+    runId: 'run_kaggle_v7_t4',
     parentCheckpointId: null,
     stepIndex: 1,
-    nodeName: 'fetch_kaggle_zr_llm_cosim_030',
+    nodeName: 'fetch_kaggle_v7_production_t4',
     phaseLabel: '01. Kaggle Bearer Auth & Artifact Fetch',
     status: 'COMMITTED',
     stateSnapshot: {
-      variables: { overallVerdict: 'SURVIVES', ece: 0.12 },
+      variables: { overallVerdict: 'VERIFIED', mlaKvVramSavingPct: 90.0 },
       messagesCount: 2,
       lastActionSummary: 'Fetched initial artifact',
       pendingWebhookEvent: null,
@@ -56,8 +56,8 @@ const mockCheckpoints: StateCheckpoint[] = [
     workspaceMerkleRoot: 'a'.repeat(64),
     workspaceFiles: [
       {
-        path: '/workspace/zr_report.json',
-        content: '{"verdict":"SURVIVES"}',
+        path: '/workspace/v7_report.json',
+        content: '{"verdict":"VERIFIED"}',
         sizeBytes: 22,
         sha256: 'b'.repeat(64),
         updatedAt: '2026-10-25T12:30:00.000Z',
@@ -72,15 +72,15 @@ const mockCheckpoints: StateCheckpoint[] = [
     createdAt: '2026-10-25T12:30:00.000Z',
   },
   {
-    id: 'ckpt_zr_002',
-    runId: 'run_zero_ram_fdtd',
-    parentCheckpointId: 'ckpt_zr_001',
+    id: 'ckpt_v7_002',
+    runId: 'run_kaggle_v7_t4',
+    parentCheckpointId: 'ckpt_v7_001',
     stepIndex: 2,
-    nodeName: 'await_next_cosim_webhook',
+    nodeName: 'await_next_sweep_webhook',
     phaseLabel: '02. Durable Suspend in Neon PostgreSQL',
     status: 'PAUSED_WAIT',
     stateSnapshot: {
-      variables: { overallVerdict: 'SURVIVES', ece: 0.091284 },
+      variables: { overallVerdict: 'VERIFIED', mlaKvVramSavingPct: 92.12 },
       messagesCount: 4,
       lastActionSummary: 'Paused awaiting webhook signal',
       pendingWebhookEvent: 'KAGGLE_KERNEL_NEXT_SWEEP_READY',
@@ -89,9 +89,9 @@ const mockCheckpoints: StateCheckpoint[] = [
     workspaceMerkleRoot: 'c'.repeat(64),
     workspaceFiles: [
       {
-        path: '/workspace/zr_report.json',
-        content: '{"verdict":"SURVIVES","ece":0.091284}',
-        sizeBytes: 38,
+        path: '/workspace/v7_report.json',
+        content: '{"verdict":"VERIFIED","mla_kv_vram_saving_pct":92.12}',
+        sizeBytes: 53,
         sha256: 'd'.repeat(64),
         updatedAt: '2026-10-25T12:35:00.000Z',
       },
@@ -111,7 +111,7 @@ describe('DagTimeTravelView Component', () => {
     render(
       <DagTimeTravelView
         runs={mockRuns}
-        selectedRunId="run_zero_ram_fdtd"
+        selectedRunId="run_kaggle_v7_t4"
         onSelectRun={vi.fn()}
         checkpoints={mockCheckpoints}
         discoveredKernels={[]}
@@ -122,12 +122,10 @@ describe('DagTimeTravelView Component', () => {
       />
     );
 
-    expect(
-      screen.getAllByText('Project Zero-RAM FDTD GPU (ZR-LLM-COSIM-030)').length
-    ).toBeGreaterThan(0);
-    expect(screen.getByText('fetch_kaggle_zr_llm_cosim_030')).toBeTruthy();
-    expect(screen.getByText('await_next_cosim_webhook')).toBeTruthy();
-    expect(screen.getByText('0.091284')).toBeTruthy();
+    expect(screen.getAllByText('Kaggle V7 Production T4 (2x Tesla T4)').length).toBeGreaterThan(0);
+    expect(screen.getByText('fetch_kaggle_v7_production_t4')).toBeTruthy();
+    expect(screen.getByText('await_next_sweep_webhook')).toBeTruthy();
+    expect(screen.getByText('92.12')).toBeTruthy();
   });
 
   it('invokes onResumeCheckpoint with HUMAN_APPROVAL and WEBHOOK_RESUME when triggered', () => {
@@ -135,7 +133,7 @@ describe('DagTimeTravelView Component', () => {
     render(
       <DagTimeTravelView
         runs={mockRuns}
-        selectedRunId="run_zero_ram_fdtd"
+        selectedRunId="run_kaggle_v7_t4"
         onSelectRun={vi.fn()}
         checkpoints={mockCheckpoints}
         discoveredKernels={[]}
@@ -148,13 +146,13 @@ describe('DagTimeTravelView Component', () => {
 
     const approvalBtn = screen.getByText('Grant Human Approval');
     fireEvent.click(approvalBtn);
-    expect(onResumeMock).toHaveBeenCalledWith('run_zero_ram_fdtd', 'ckpt_zr_002', 'HUMAN_APPROVAL');
+    expect(onResumeMock).toHaveBeenCalledWith('run_kaggle_v7_t4', 'ckpt_v7_002', 'HUMAN_APPROVAL');
 
     const webhookBtn = screen.getByText('Inject Webhook & Resume');
     fireEvent.click(webhookBtn);
     expect(onResumeMock).toHaveBeenCalledWith(
-      'run_zero_ram_fdtd',
-      'ckpt_zr_002',
+      'run_kaggle_v7_t4',
+      'ckpt_v7_002',
       'WEBHOOK_RESUME',
       expect.objectContaining({ event: 'KAGGLE_KERNEL_NEXT_SWEEP_READY' })
     );

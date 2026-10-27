@@ -22,7 +22,7 @@ describe('Security & Rate Limiting Middleware', () => {
   it('prevents directory traversal and normalizes paths inside /workspace/', () => {
     expect(() => sanitizeWorkspacePath('../../etc/passwd')).toThrow(/Invalid workspace path/);
     expect(sanitizeWorkspacePath('/workspace/src/solver.py')).toBe('/workspace/src/solver.py');
-    expect(sanitizeWorkspacePath('reports/cosim.json')).toBe('/workspace/reports/cosim.json');
+    expect(sanitizeWorkspacePath('reports/metrics.json')).toBe('/workspace/reports/metrics.json');
   });
 
   it('attaches strict security headers and X-Request-Id', () => {

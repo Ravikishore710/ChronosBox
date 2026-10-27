@@ -17,7 +17,7 @@ import {
   WORKER_NODE_ID,
 } from './seed.ts';
 
-dotenv.config();
+dotenv.config({ quiet: true });
 
 export const STATE_WAL_PATH = path.resolve(process.cwd(), '.chronosbox-wal-v2.json');
 
@@ -40,7 +40,8 @@ export function resolveKaggleSlug(rawSlug: string | undefined, fallback: string)
     cleaned.endsWith('/') ||
     cleaned.includes(' ') ||
     !cleaned.includes('/') ||
-    cleaned.length < 5
+    cleaned.length < 5 ||
+    cleaned.includes('/project-')
   ) {
     return fallback;
   }
@@ -49,19 +50,20 @@ export function resolveKaggleSlug(rawSlug: string | undefined, fallback: string)
 
 export const RESOLVED_PRIMARY_KERNEL = resolveKaggleSlug(
   process.env.KAGGLE_GPU_KERNEL_SLUG,
-  'raviikishore07/project-zero-ram-fdtd-gpu'
+  'raviikishore07/kaggle-v7-production-t4'
 );
 export const RESOLVED_SECONDARY_KERNEL = resolveKaggleSlug(
   process.env.KAGGLE_ALT_KERNEL_SLUG,
-  'raviikishore07/kaggle-v7-production-t4'
+  'raviikishore07/nexoralm-300m-pretraining'
 );
 export const KAGGLE_USER = (process.env.KAGGLE_USERNAME || 'RaviiKishore07').trim();
 
 const pgConnectionUrl = resolvePostgresUrl();
 export let pgPool: pg.Pool | null = null;
 if (pgConnectionUrl) {
+  const normalizedPoolUrl = pgConnectionUrl.replace(/sslmode=require\b/i, 'sslmode=verify-full');
   pgPool = new pg.Pool({
-    connectionString: pgConnectionUrl,
+    connectionString: normalizedPoolUrl,
     max: 8,
     connectionTimeoutMillis: 10000,
   });
@@ -371,7 +373,15 @@ export async function initNeonPostgresAndSync(): Promise<void> {
       "SELECT payload FROM chronos_state_store_v2 WHERE store_key = 'PRIMARY_STATE';"
     );
     const existingRow = existing.rows[0] as { payload?: ChronosStateStore } | undefined;
-    if (existingRow?.payload?.runs && existingRow.payload.runs.length > 0) {
+    const hasCurrentBaselineRun = Boolean(
+      existingRow?.payload?.runs?.some((r) => r.id === 'run_kaggle_v7_t4')
+    );
+
+    if (
+      existingRow?.payload?.runs &&
+      existingRow.payload.runs.length > 0 &&
+      hasCurrentBaselineRun
+    ) {
       const loaded = existingRow.payload;
       for (const r of loaded.runs) {
         r.workerLease = upsertInMemoryLease(r.id, 'DEEP_MERGE');
@@ -392,6 +402,9 @@ export async function initNeonPostgresAndSync(): Promise<void> {
       }
       stateStore = loaded;
     } else {
+      await pgPool.query(
+        'TRUNCATE TABLE chronos_checkpoints_pgvector, chronos_checkpoint_deltas, chronos_worker_leases, chronos_trajectory_pgvector;'
+      );
       await syncStateToNeonPostgres();
     }
     updatePersistedCounts();
@@ -409,7 +422,15 @@ export async function refreshKaggleKernelsList(): Promise<void> {
       const list = (await resp.json()) as Array<Record<string, unknown>>;
       liveDiagnostics.kaggleAuthenticated = true;
       liveDiagnostics.discoveredKernels = list
-        .filter((k) => k.ref && String(k.ref).includes('/'))
+        .filter((k) => {
+          const ref = String(k.ref || '');
+          return (
+            ref.includes('/') &&
+            !ref.includes('/project-') &&
+            !ref.includes('audit-benchmark') &&
+            !ref.includes('validation-l8192')
+          );
+        })
         .map((k) => ({
           ref: String(k.ref),
           title: String(k.title || k.ref),

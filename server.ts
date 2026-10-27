@@ -22,7 +22,7 @@ import { sandboxRouter } from './src/server/routes/sandboxRoutes.ts';
 import { checkpointRouter } from './src/server/routes/checkpointRoutes.ts';
 import { runRouter } from './src/server/routes/runRoutes.ts';
 
-dotenv.config();
+dotenv.config({ quiet: true });
 
 const PORT = Number(process.env.PORT) || 3000;
 

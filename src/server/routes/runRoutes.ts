@@ -111,7 +111,7 @@ runRouter.post('/api/runs/create-or-step', async (req, res) => {
               vramUsedGb: 3.88,
               vramTotalGb: 14.56,
               stepProgress: 'Initialized',
-              fdtdGridThroughputGcells: 4.75,
+              computeThroughputTflops: 8.12,
               kernelState: 'RUNNING',
             }
           : null,
@@ -200,7 +200,7 @@ runRouter.post('/api/runs/create-or-step', async (req, res) => {
         };
 
         const response = await ai.models.generateContent({
-          model: 'gemini-3.8-flash',
+          model: 'gemini-3-flash-preview',
           contents: `You are the ChronosBox Durable Agent Engine orchestrating run "${
             run.name
           }" (Kernel: ${run.kaggleKernelSlug || 'N/A'}).
