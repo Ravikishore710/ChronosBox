@@ -17,7 +17,7 @@
     "format:check": "prettier --check src server.ts"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=22.19.0"
   },
   "dependencies": {
     "@google/genai": "2.31.0",

@@ -24,7 +24,7 @@ ChronosBox is a durable execution control plane and transactional sandbox runner
 ## Getting Started
 
 ### Prerequisites
-- **Node.js** `>= 20.0.0` and `npm`
+- **Node.js** `>= 22.19.0` and `npm`
 - **PostgreSQL 16+** with `pgvector` extension (optional for local development; automatically falls back to local WAL `.chronosbox-wal-v2.json` if `DATABASE_URL` is omitted)
 
 ### Installation & Local Development
