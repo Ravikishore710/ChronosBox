@@ -1,0 +1,49 @@
+name: ChronosBox CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Lint, Typecheck, Audit, Test & Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install reproducible dependencies
+        run: npm ci
+
+      - name: Run dependency security audit
+        run: npm audit --audit-level=high
+
+      - name: Run ESLint static analysis
+        run: npm run lint
+
+      - name: Run TypeScript strict typecheck
+        run: npm run typecheck
+
+      - name: Check formatting with Prettier
+        run: npm run format:check
+
+      - name: Execute Vitest unit & integration suite
+        run: npm test
+
+      - name: Build production bundle
+        run: npm run build

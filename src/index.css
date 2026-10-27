@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @layer base {
   :root {
@@ -9,17 +9,23 @@
 
   body {
     font-family: var(--font-sans);
-    background-color: #0B0F17;
-    color: #F8FAFC;
+    background-color: #0b0f17;
+    color: #f8fafc;
     letter-spacing: 0.005em;
   }
 
-  h1, h2, h3, h4, .font-display {
+  h1,
+  h2,
+  h3,
+  h4,
+  .font-display {
     font-family: var(--font-display);
     text-wrap: balance;
   }
 
-  code, pre, .font-mono {
+  code,
+  pre,
+  .font-mono {
     font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
   }
@@ -36,11 +42,11 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: #0B0F17;
+  background: #0b0f17;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1E293B;
+  background: #1e293b;
   border-radius: 3px;
 }
 

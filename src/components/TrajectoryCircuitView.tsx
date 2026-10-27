@@ -1,18 +1,6 @@
 import React, { useState } from 'react';
-import {
-  DurableRun,
-  TrajectoryEvent,
-  DeadLetterDump,
-} from '../types/chronos.ts';
-import {
-  Hash,
-  Wrench,
-  Play,
-  CheckCircle2,
-  XCircle,
-  FileWarning,
-  Search,
-} from 'lucide-react';
+import { DurableRun, TrajectoryEvent, DeadLetterDump } from '../types/chronos.ts';
+import { Hash, Wrench, Play, CheckCircle2, XCircle, FileWarning, Search } from 'lucide-react';
 
 interface TrajectoryCircuitViewProps {
   runs: DurableRun[];
@@ -37,8 +25,7 @@ export const TrajectoryCircuitView: React.FC<TrajectoryCircuitViewProps> = ({
   const [hashFilter, setHashFilter] = useState<string>('');
   const [onlyFailures, setOnlyFailures] = useState<boolean>(false);
 
-  const activeDlq =
-    dlqDumps.find((d) => d.id === selectedDlqId) || dlqDumps[0] || null;
+  const activeDlq = dlqDumps.find((d) => d.id === selectedDlqId) || dlqDumps[0] || null;
 
   const [patchedCmdInput, setPatchedCmdInput] = useState<string>(
     'pip install nvidia-cuda-runtime-cu12==12.4.127 --no-input'
@@ -73,8 +60,8 @@ export const TrajectoryCircuitView: React.FC<TrajectoryCircuitViewProps> = ({
             </h2>
             <p className="text-xs text-slate-400 mt-0.5">
               Tier 1 normalizes CLI flag permutations into canonical SHA-256 digests; Tier 2
-              computes 8-dim trigram/SimHash cosine similarity (`&gt;= 0.88`) in Neon `pgvector`
-              to halt semantic loops at Strike 3.
+              computes 8-dim trigram/SimHash cosine similarity (`&gt;= 0.88`) in Neon `pgvector` to
+              halt semantic loops at Strike 3.
             </p>
           </div>
 
@@ -150,11 +137,7 @@ export const TrajectoryCircuitView: React.FC<TrajectoryCircuitViewProps> = ({
                       <span className="text-slate-500">·</span>
                       <span className="text-slate-400">Step #{ev.stepIndex}</span>
                       <span className="text-slate-500">·</span>
-                      <span
-                        className={
-                          ev.exitCode === 0 ? 'text-emerald-400' : 'text-red-400'
-                        }
-                      >
+                      <span className={ev.exitCode === 0 ? 'text-emerald-400' : 'text-red-400'}>
                         Exit {ev.exitCode}
                       </span>
                       {ev.loopMatchTier && ev.loopMatchTier !== 'NOMINAL' && (
@@ -174,19 +157,13 @@ export const TrajectoryCircuitView: React.FC<TrajectoryCircuitViewProps> = ({
                         )}
                       {ev.consecutiveStrikeNumber > 0 && (
                         <span
-                          className={
-                            isStrike3
-                              ? 'text-red-400 font-semibold'
-                              : 'text-amber-400'
-                          }
+                          className={isStrike3 ? 'text-red-400 font-semibold' : 'text-amber-400'}
                         >
                           Strike {ev.consecutiveStrikeNumber}/3
                           {isStrike3 ? ' [CIRCUIT OPEN]' : ''}
                         </span>
                       )}
-                      {ev.wasRolledBack && (
-                        <span className="text-slate-400">· Rolled Back</span>
-                      )}
+                      {ev.wasRolledBack && <span className="text-slate-400">· Rolled Back</span>}
                     </div>
                   </div>
 
@@ -267,8 +244,7 @@ export const TrajectoryCircuitView: React.FC<TrajectoryCircuitViewProps> = ({
                     </span>
                   </div>
                   <div className="text-xs font-mono text-slate-400 truncate mt-1">
-                    Hash: {dump.triggerHash.slice(0, 20)}... · Halted at{' '}
-                    {dump.haltedAtCheckpointId}
+                    Hash: {dump.triggerHash.slice(0, 20)}... · Halted at {dump.haltedAtCheckpointId}
                   </div>
                 </button>
               );
@@ -288,9 +264,7 @@ export const TrajectoryCircuitView: React.FC<TrajectoryCircuitViewProps> = ({
               </div>
 
               <div className="p-3 rounded bg-slate-950 border border-slate-800 text-xs font-mono text-slate-300 space-y-1.5 max-h-56 overflow-y-auto">
-                <div className="text-slate-400 font-semibold">
-                  Structured Crash Dump Payload:
-                </div>
+                <div className="text-slate-400 font-semibold">Structured Crash Dump Payload:</div>
                 <pre className="whitespace-pre-wrap break-all text-xs">
                   {JSON.stringify(activeDlq.crashDumpPayload, null, 2)}
                 </pre>

@@ -5,14 +5,7 @@ import {
   StateCheckpoint,
   TrajectoryEvent,
 } from '../types/chronos.ts';
-import {
-  Activity,
-  Play,
-  Database,
-  Clock,
-  Lock,
-  Terminal,
-} from 'lucide-react';
+import { Activity, Play, Database, Clock, Lock, Terminal } from 'lucide-react';
 
 interface BenchmarksAndArchitectureViewProps {
   benchmark: BenchmarkTrialResult | null;
@@ -23,9 +16,7 @@ interface BenchmarksAndArchitectureViewProps {
   busyAction: string | null;
 }
 
-export const BenchmarksAndArchitectureView: React.FC<
-  BenchmarksAndArchitectureViewProps
-> = ({
+export const BenchmarksAndArchitectureView: React.FC<BenchmarksAndArchitectureViewProps> = ({
   benchmark,
   diagnostics,
   checkpoints,
@@ -47,9 +38,7 @@ export const BenchmarksAndArchitectureView: React.FC<
 
   const avgCheckpointLatencyMs =
     checkpoints.length > 0
-      ? Math.round(
-          checkpoints.reduce((sum, c) => sum + c.latencyMs, 0) / checkpoints.length
-        )
+      ? Math.round(checkpoints.reduce((sum, c) => sum + c.latencyMs, 0) / checkpoints.length)
       : 0;
 
   const avgCompressionSavingPct =
@@ -75,8 +64,8 @@ export const BenchmarksAndArchitectureView: React.FC<
               Storage, Adaptive L1 Cache & CAS Deduplication Telemetry
             </h2>
             <p className="text-xs text-slate-400 mt-0.5">
-              Live connection states across Neon PostgreSQL 18.6 (`pgvector 0.8.6`), Adaptive L1
-              LRU Cache, Content-Addressable Copy-on-Write Blob Store, and Kaggle Bearer API.
+              Live connection states across Neon PostgreSQL 18.6 (`pgvector 0.8.6`), Adaptive L1 LRU
+              Cache, Content-Addressable Copy-on-Write Blob Store, and Kaggle Bearer API.
             </p>
           </div>
           <span className="text-xs font-mono text-emerald-400">
@@ -141,8 +130,8 @@ export const BenchmarksAndArchitectureView: React.FC<
             </h2>
             <p className="text-xs text-slate-400 mt-0.5">
               Measures real-time `process.hrtime.bigint()` latency for AST flag normalization,
-              SHA-256 hashing, 8-dim trigram vector similarity, RFC 6902 + Brotli delta
-              compression, and Merkle CoW rollback.
+              SHA-256 hashing, 8-dim trigram vector similarity, RFC 6902 + Brotli delta compression,
+              and Merkle CoW rollback.
             </p>
           </div>
 
@@ -162,21 +151,16 @@ export const BenchmarksAndArchitectureView: React.FC<
               className="px-4 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-500 disabled:opacity-50 rounded-md transition-colors whitespace-nowrap shrink-0 flex items-center gap-1.5"
             >
               <Play className="w-3.5 h-3.5" />
-              {busyAction === 'benchmark'
-                ? 'Profiling Subsystems...'
-                : 'Run Latency Profiler'}
+              {busyAction === 'benchmark' ? 'Profiling Subsystems...' : 'Run Latency Profiler'}
             </button>
           </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-3 border-t border-slate-800 font-mono tabular-nums">
           <div className="p-3.5 rounded-md bg-slate-950/70 border border-slate-800">
-            <div className="text-xs text-slate-400 font-sans">
-              Tier-1 SHA-256 AST Throughput
-            </div>
+            <div className="text-xs text-slate-400 font-sans">Tier-1 SHA-256 AST Throughput</div>
             <div className="text-lg font-semibold text-slate-100 mt-1">
-              {benchmark.chronosMetrics.sha256TrajectoryThroughputOpsPerSec.toLocaleString()}{' '}
-              ops/s
+              {benchmark.chronosMetrics.sha256TrajectoryThroughputOpsPerSec.toLocaleString()} ops/s
             </div>
             <div className="text-xs text-emerald-400 mt-0.5">
               {benchmark.chronosMetrics.avgHashLatencyUs} µs · L1 Lookup:{' '}
@@ -197,9 +181,7 @@ export const BenchmarksAndArchitectureView: React.FC<
           </div>
 
           <div className="p-3.5 rounded-md bg-slate-950/70 border border-slate-800">
-            <div className="text-xs text-slate-400 font-sans">
-              RFC 6902 + Brotli Compression
-            </div>
+            <div className="text-xs text-slate-400 font-sans">RFC 6902 + Brotli Compression</div>
             <div className="text-lg font-semibold text-slate-100 mt-1">
               {avgCompressionSavingPct}% Saved
             </div>
@@ -209,9 +191,7 @@ export const BenchmarksAndArchitectureView: React.FC<
           </div>
 
           <div className="p-3.5 rounded-md bg-slate-950/70 border border-slate-800">
-            <div className="text-xs text-slate-400 font-sans">
-              Merkle CoW Rollback Latency
-            </div>
+            <div className="text-xs text-slate-400 font-sans">Merkle CoW Rollback Latency</div>
             <div className="text-lg font-semibold text-slate-100 mt-1">
               {benchmark.chronosMetrics.merkleSnapshotRollbackLatencyMs} ms
             </div>
@@ -313,9 +293,7 @@ export const BenchmarksAndArchitectureView: React.FC<
                       <td className="py-2.5 px-4 text-slate-500">
                         {cp.traceparent ? `${cp.traceparent.slice(0, 26)}...` : '00-trace'}
                       </td>
-                      <td className="py-2.5 px-4 text-right text-slate-200">
-                        {cp.latencyMs} ms
-                      </td>
+                      <td className="py-2.5 px-4 text-right text-slate-200">{cp.latencyMs} ms</td>
                     </tr>
                   );
                 })}

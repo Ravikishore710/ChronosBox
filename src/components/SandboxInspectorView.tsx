@@ -1,9 +1,5 @@
 import React, { useState } from 'react';
-import {
-  DurableRun,
-  StateCheckpoint,
-  TrajectoryEvent,
-} from '../types/chronos.ts';
+import { DurableRun, StateCheckpoint, TrajectoryEvent } from '../types/chronos.ts';
 import { SandboxResourceUsage } from './SandboxResourceUsage.tsx';
 import {
   Terminal,
@@ -50,8 +46,7 @@ export const SandboxInspectorView: React.FC<SandboxInspectorViewProps> = ({
 
   const files = latestCp?.workspaceFiles || [];
   const [selectedFilePath, setSelectedFilePath] = useState<string>('');
-  const activeFile =
-    files.find((f) => f.path === selectedFilePath) || files[0] || null;
+  const activeFile = files.find((f) => f.path === selectedFilePath) || files[0] || null;
 
   const [commandInput, setCommandInput] = useState<string>(
     'python3 /workspace/kaggle_zero_ram/verify_cosim_invariants.py'
@@ -62,9 +57,7 @@ export const SandboxInspectorView: React.FC<SandboxInspectorViewProps> = ({
     .slice()
     .reverse();
 
-  const latestRollbackEvent = runEvents.find(
-    (e) => e.wasRolledBack && e.abortedFileDiff
-  );
+  const latestRollbackEvent = runEvents.find((e) => e.wasRolledBack && e.abortedFileDiff);
 
   if (!selectedRun) return null;
 
@@ -81,10 +74,7 @@ export const SandboxInspectorView: React.FC<SandboxInspectorViewProps> = ({
   return (
     <div className="space-y-6">
       {/* Real-Time Recharts Sandbox Container CPU/RAM Telemetry */}
-      <SandboxResourceUsage
-        selectedRunId={selectedRun.id}
-        onSelectRun={onSelectRun}
-      />
+      <SandboxResourceUsage selectedRunId={selectedRun.id} onSelectRun={onSelectRun} />
 
       {/* Sandbox Resource Quotas & Isolation Policy Bar */}
       <div className="border border-slate-800 bg-[#111827]/70 rounded-lg p-5">
@@ -122,8 +112,8 @@ export const SandboxInspectorView: React.FC<SandboxInspectorViewProps> = ({
               <Cpu className="w-3.5 h-3.5 text-blue-400" />
             </div>
             <div className="text-sm font-semibold font-mono tabular-nums text-slate-100 mt-1">
-              {selectedRun.sandboxQuotas.usedMemoryMb} MB /{' '}
-              {selectedRun.sandboxQuotas.maxMemoryMb} MB
+              {selectedRun.sandboxQuotas.usedMemoryMb} MB / {selectedRun.sandboxQuotas.maxMemoryMb}{' '}
+              MB
             </div>
             <div className="text-xs text-slate-500 font-mono tabular-nums mt-0.5">
               CPU Shares: {selectedRun.sandboxQuotas.cpuShares} · Timeout:{' '}
@@ -152,9 +142,7 @@ export const SandboxInspectorView: React.FC<SandboxInspectorViewProps> = ({
             <div className="text-sm font-semibold font-mono tabular-nums text-slate-100 mt-1">
               {selectedRun.rollbackCount} Reverted Executions
             </div>
-            <div className="text-xs text-slate-500 mt-0.5">
-              Triggered on non-zero exit status
-            </div>
+            <div className="text-xs text-slate-500 mt-0.5">Triggered on non-zero exit status</div>
           </div>
 
           <div className="p-3 rounded-md bg-slate-950/60 border border-slate-800/80">
@@ -252,17 +240,14 @@ export const SandboxInspectorView: React.FC<SandboxInspectorViewProps> = ({
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-amber-400 flex items-center gap-1.5">
                   <ShieldAlert className="w-4 h-4" />
-                  Atomic File-System Rollback Audit (
-                  {latestRollbackEvent.abortedFileDiff.filePath})
+                  Atomic File-System Rollback Audit ({latestRollbackEvent.abortedFileDiff.filePath})
                 </span>
                 <span className="text-xs font-mono tabular-nums text-slate-400">
                   Exit Code {latestRollbackEvent.exitCode} · Restored Merkle{' '}
                   {latestRollbackEvent.postMerkleRoot.slice(0, 10)}
                 </span>
               </div>
-              <p className="text-xs text-slate-400">
-                {latestRollbackEvent.rollbackReason}
-              </p>
+              <p className="text-xs text-slate-400">{latestRollbackEvent.rollbackReason}</p>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs font-mono">
                 <div className="p-3 rounded bg-red-950/20 border border-red-900/50">
@@ -289,9 +274,7 @@ export const SandboxInspectorView: React.FC<SandboxInspectorViewProps> = ({
         {/* Right: Workspace File Tree & Content Viewer (5 cols) */}
         <div className="lg:col-span-5 border border-slate-800 bg-[#111827]/70 rounded-lg overflow-hidden">
           <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between">
-            <span className="text-sm font-semibold text-slate-100">
-              Workspace Filesystem Tree
-            </span>
+            <span className="text-sm font-semibold text-slate-100">Workspace Filesystem Tree</span>
             <span className="text-xs font-mono tabular-nums text-slate-400">
               {files.length} files
             </span>

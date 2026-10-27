@@ -10,14 +10,7 @@ import {
   ReferenceLine,
 } from 'recharts';
 import { SandboxContainerTelemetry, RunStatus } from '../types/chronos.ts';
-import {
-  Activity,
-  Cpu,
-  HardDrive,
-  Pause,
-  Play,
-  RefreshCw,
-} from 'lucide-react';
+import { Activity, Cpu, HardDrive, Pause, Play, RefreshCw } from 'lucide-react';
 
 interface SandboxResourceUsageProps {
   selectedRunId: string;
@@ -32,9 +25,7 @@ export const SandboxResourceUsage: React.FC<SandboxResourceUsageProps> = ({
   const [lastPolledAt, setLastPolledAt] = useState<string>('');
   const [isPolling, setIsPolling] = useState<boolean>(true);
   const [pollIntervalMs, setPollIntervalMs] = useState<number>(2000);
-  const [viewMode, setViewMode] = useState<'FOCUSED_RUN' | 'ALL_CONTAINERS'>(
-    'ALL_CONTAINERS'
-  );
+  const [viewMode, setViewMode] = useState<'FOCUSED_RUN' | 'ALL_CONTAINERS'>('ALL_CONTAINERS');
   const [loading, setLoading] = useState<boolean>(true);
 
   const pollMetrics = useCallback(async () => {
@@ -64,9 +55,7 @@ export const SandboxResourceUsage: React.FC<SandboxResourceUsageProps> = ({
     containers.find((c) => c.runId === selectedRunId) || containers[0] || null;
 
   const displayedContainers =
-    viewMode === 'FOCUSED_RUN' && focusedContainer
-      ? [focusedContainer]
-      : containers;
+    viewMode === 'FOCUSED_RUN' && focusedContainer ? [focusedContainer] : containers;
 
   return (
     <div className="border border-slate-800 bg-[#111827]/70 rounded-lg p-5 space-y-5">
@@ -84,9 +73,7 @@ export const SandboxResourceUsage: React.FC<SandboxResourceUsageProps> = ({
             <span aria-hidden="true">·</span>
             <span>
               Last Sample:{' '}
-              {lastPolledAt
-                ? new Date(lastPolledAt).toLocaleTimeString()
-                : 'Connecting...'}
+              {lastPolledAt ? new Date(lastPolledAt).toLocaleTimeString() : 'Connecting...'}
             </span>
           </div>
         </div>
@@ -191,8 +178,8 @@ export const SandboxResourceUsage: React.FC<SandboxResourceUsageProps> = ({
                           ctr.status === RunStatus.CIRCUIT_HALTED
                             ? 'text-red-400'
                             : ctr.status === RunStatus.PAUSED_WEBHOOK
-                            ? 'text-amber-400'
-                            : 'text-emerald-400'
+                              ? 'text-amber-400'
+                              : 'text-emerald-400'
                         }
                       >
                         {ctr.containerState}
